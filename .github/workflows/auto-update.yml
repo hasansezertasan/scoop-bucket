@@ -28,12 +28,15 @@ jobs:
           python-version: "3.12"
       - name: Update manifests
         id: update
+        # Inputs are passed via env (never inlined into the shell) to avoid
+        # ${{ }} template-injection into the run block.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: ${{ inputs.package }}
         run: |
           {
             echo 'summary<<SUMMARY_EOF'
-            python scripts/update_manifests.py "${{ inputs.package }}"
+            python scripts/update_manifests.py $PACKAGE
             echo 'SUMMARY_EOF'
           } >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
