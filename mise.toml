@@ -1,0 +1,27 @@
+[tools]
+action-validator = "latest"
+actionlint = "latest"
+yamlfmt = "latest"
+yamllint = "latest"
+
+[tasks."style"]
+description = "Format and lint all YAML files"
+run = [{ task = "style:fix" }, { task = "style:check" }]
+
+[tasks."style:fix"]
+description = "Format YAML files in place"
+run = "yamlfmt ."
+
+[tasks."style:check"]
+description = "Lint YAML and GitHub Actions files (no fixes)"
+run = """
+#!/usr/bin/env bash
+set -e
+echo "Running yamllint..."
+yamllint .
+echo "Running actionlint..."
+actionlint
+echo "Running action-validator..."
+find .github/workflows -name '*.yml' -exec action-validator {} +
+echo "All checks passed!"
+"""

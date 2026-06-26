@@ -1,0 +1,62 @@
+---
+name: Update Manifest (Dispatch)
+# Triggered by package repos (e.g. keycast's release.yml) right after they
+# publish a release, for a prompt bump instead of waiting for the cron below.
+on:
+  repository_dispatch:
+    types: [update-manifest]
+# Expected client_payload:
+# {
+#   "package": "keycast",   # package family (required) — matches keycast*.json
+#   "version": "0.2.0"      # informational; the updater re-checks each source
+# }
+jobs:
+  update:
+    name: Update ${{ github.event.client_payload.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Validate payload
+        run: |
+          if [ -z "${{ github.event.client_payload.package }}" ]; then
+            echo "::error::'package' is required in client_payload"
+            exit 1
+          fi
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Update manifests
+        id: update
+        env:
+          # Authenticates the GitHub Releases API call in the updater.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo 'summary<<SUMMARY_EOF'
+            python scripts/update_manifests.py "${{ github.event.client_payload.package }}"
+            echo 'SUMMARY_EOF'
+          } >> "$GITHUB_OUTPUT"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: >-
+            chore(${{ github.event.client_payload.package }}): update manifests
+          title: >-
+            chore(${{ github.event.client_payload.package }}): update manifests
+          body: |
+            Automated update triggered by a package release.
+
+            ## Updates
+            ${{ steps.update.outputs.summary }}
+
+            ---
+            *Triggered by repository_dispatch from the package repo.*
+          branch: auto-update/${{ github.event.client_payload.package }}
+          delete-branch: true
+          labels: automated,dependencies

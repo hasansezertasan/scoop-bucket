@@ -1,0 +1,103 @@
+---
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  lint:
+    name: Lint manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Validate JSON syntax
+        run: |
+          for file in bucket/*.json; do
+            echo "Validating $file..."
+            python -m json.tool "$file" > /dev/null
+          done
+  discover:
+    name: Discover packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      packages: ${{ steps.find.outputs.packages }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Find all packages
+        id: find
+        run: |
+          packages=$(
+            for f in bucket/*.json; do basename "$f" .json; done \
+              | jq -R -s -c 'split("\n") | map(select(length > 0))'
+          )
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          echo "Found packages: $packages"
+  test:
+    name: Test ${{ matrix.package }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [lint, discover]
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Skip placeholder manifests
+        id: guard
+        shell: pwsh
+        run: |
+          # Manifests are seeded at 0.0.0 until the first real bump (the binary
+          # manifest in particular needs a release that ships keycast-windows.zip).
+          # Don't try to install a placeholder — skip cleanly so CI stays green.
+          $version = (Get-Content "bucket/${{ matrix.package }}.json" | ConvertFrom-Json).version
+          if ($version -eq "0.0.0") {
+            echo "skip=true" >> $env:GITHUB_OUTPUT
+            echo "::notice::${{ matrix.package }} is still 0.0.0 (placeholder); skipping install test"
+          } else {
+            echo "skip=false" >> $env:GITHUB_OUTPUT
+          }
+      # keycast requires Python >= 3.14; the pipx-shim manifest installs through it.
+      - name: Set up Python
+        if: steps.guard.outputs.skip == 'false'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.14"
+      - name: Install Scoop and dependencies
+        if: steps.guard.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm get.scoop.sh | iex
+          $env:Path = "$env:USERPROFILE\scoop\shims;$env:Path"
+          scoop bucket add extras
+          scoop install pipx
+          pipx ensurepath
+      - name: Add local bucket
+        if: steps.guard.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          # Scoop wants a Git URL for `bucket add`; for local testing we copy the
+          # working-tree files straight into Scoop's bucket directory instead.
+          $bucketDir = "$env:USERPROFILE\scoop\buckets\keycast"
+          New-Item -ItemType Directory -Path "$bucketDir\bucket" -Force
+          Copy-Item -Path "${{ github.workspace }}\bucket\*" -Destination "$bucketDir\bucket\" -Recurse
+      - name: Install ${{ matrix.package }}
+        if: steps.guard.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          $env:Path = "$env:USERPROFILE\scoop\shims;$env:Path"
+          scoop install keycast/${{ matrix.package }}
+      - name: Smoke-test the keycast command
+        if: steps.guard.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          # Both manifests expose the `keycast` command — the binary via a Scoop
+          # shim, the pipx shim via pipx's bin dir. `keycast version` is the CLI
+          # subcommand (there is no `--version` flag).
+          $env:Path = "$env:USERPROFILE\scoop\shims;$env:USERPROFILE\.local\bin;$env:Path"
+          keycast version

@@ -1,0 +1,55 @@
+---
+name: Update Manifests
+# The source of truth and safety net: re-checks every manifest on a schedule, so
+# the bucket stays current even if a package repo never fires its dispatch.
+on:
+  schedule:
+    # Run weekly on Mondays at 09:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Specific package family to update (leave empty for all)"
+        required: false
+        type: string
+jobs:
+  update:
+    name: Update manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Update manifests
+        id: update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo 'summary<<SUMMARY_EOF'
+            python scripts/update_manifests.py "${{ inputs.package }}"
+            echo 'SUMMARY_EOF'
+          } >> "$GITHUB_OUTPUT"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update manifests"
+          title: "chore: update manifests"
+          body: |
+            Automated manifest updates from upstream sources.
+
+            ## Updates
+            ${{ steps.update.outputs.summary }}
+
+            ---
+            *This PR was opened by the scheduled update-manifests workflow.*
+          branch: auto-update/scheduled
+          delete-branch: true
+          labels: automated,dependencies
