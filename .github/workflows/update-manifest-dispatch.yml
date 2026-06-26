@@ -21,8 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - name: Validate payload
+        # Payload is passed via env (never inlined into the shell) to avoid
+        # ${{ }} template-injection from the dispatch client_payload.
+        env:
+          PACKAGE: ${{ github.event.client_payload.package }}
         run: |
-          if [ -z "${{ github.event.client_payload.package }}" ]; then
+          if [ -z "$PACKAGE" ]; then
             echo "::error::'package' is required in client_payload"
             exit 1
           fi
@@ -35,13 +39,24 @@ jobs:
         env:
           # Authenticates the GitHub Releases API call in the updater.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: ${{ github.event.client_payload.package }}
         run: |
           {
             echo 'summary<<SUMMARY_EOF'
-            python scripts/update_manifests.py "${{ github.event.client_payload.package }}"
+            python scripts/update_manifests.py "$PACKAGE"
             echo 'SUMMARY_EOF'
           } >> "$GITHUB_OUTPUT"
+          # A dispatch fires in response to a publish, so "nothing changed" is a
+          # signal worth surfacing — the updater may have hit a misconfigured
+          # checkver, an unpublished asset, or a yank (see the logs above).
+          if [ -n "$(git status --porcelain bucket/)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::no manifest change for '$PACKAGE' — already current, or a checkver/asset/yank issue (see the update step logs)"
+          fi
       - name: Create Pull Request
+        if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
