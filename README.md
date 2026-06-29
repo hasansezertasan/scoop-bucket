@@ -30,6 +30,20 @@ scoop install keycast-pipx   # installs via pipx from PyPI
 > command. Most users want `keycast` (no Python needed); choose `keycast-pipx`
 > if you already use pipx and prefer the PyPI package.
 
+### Other tools
+
+This bucket also mirrors the pure-Python tools from the tap's **formulas**. Each
+is a *pipx shim* (the same pattern as `keycast-pipx`): `"depends": "pipx"` and
+`pipx install <tool>` does the real work, so they need Python 3.14+.
+
+| Package | What it does | Version source |
+|---|---|---|
+| `cobo` | fetches boilerplate files from configurable git repositories | PyPI |
+
+```powershell
+scoop install cobo
+```
+
 ## How updates work
 
 Both manifests are kept current automatically — there is nothing to edit by hand:
