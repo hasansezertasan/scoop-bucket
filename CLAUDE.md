@@ -57,12 +57,13 @@ namespace, so each is a distinct installable name):
 - **lint** — validates each manifest's JSON syntax.
 - **discover** / **test** — for any manifest past its `0.0.0` placeholder,
   installs it on a Windows runner (with Python 3.14 for the pipx route) and
-  smoke-tests `keycast version`. Manifests still at `0.0.0` are skipped, so CI is
+  smoke-tests the installed command via a per-package map (`keycast version`,
+  `cobo version`, `ocom --version`, …). Manifests still at `0.0.0` are skipped, so CI is
   green on a freshly seeded bucket and activates automatically on the first bump.
 
 ## Version updates
 
-Both manifests are kept current automatically (mirroring the tap):
+All manifests are kept current automatically (mirroring the tap):
 
 **Scheduled** (`.github/workflows/auto-update.yml`, name "Update Manifests"):
 

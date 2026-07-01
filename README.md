@@ -40,12 +40,12 @@ so no separate Python install is required. Scoop's `uv` package already keeps uv
 tool directory on your PATH, so the command is available in a new terminal after
 install — nothing else to configure.
 
-| Package | What it does | Version source |
-|---|---|---|
-| `cobo` | fetches boilerplate files from configurable git repositories | PyPI |
-| `hwid` | extracts a cross-platform hardware ID using native OS detection | PyPI |
-| `olink` | opens external URLs related to your project | PyPI |
-| `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) | PyPI |
+| Package | What it does | Source | Version source |
+|---|---|---|---|
+| `cobo` | fetches boilerplate files from configurable git repositories | [repo](https://github.com/hasansezertasan/cobo) · [PyPI](https://pypi.org/project/cobo/) | PyPI |
+| `hwid` | extracts a cross-platform hardware ID using native OS detection | [repo](https://github.com/hasansezertasan/hwid) · [PyPI](https://pypi.org/project/hwid/) | PyPI |
+| `olink` | opens external URLs related to your project | [repo](https://github.com/hasansezertasan/olink) · [PyPI](https://pypi.org/project/olink/) | PyPI |
+| `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) | [repo](https://github.com/hasansezertasan/ocom) · [PyPI](https://pypi.org/project/ocom/) | PyPI |
 
 ```powershell
 scoop install cobo
@@ -58,14 +58,21 @@ scoop install ocom
 > its runtime usefulness on Windows is limited — it's provided for parity with
 > the tap.
 
+> **On "install source":** every package except the binary `keycast` installs
+> *through* pipx or uv, so Scoop isn't the real installer. `scoop list` shows the
+> shim, but the actual tool lives in pipx/uv's directory — e.g. a keycast set up
+> via `keycast-pipx` reports `Install source: pipx`, not `scoop`. Only the binary
+> `keycast` manifest is detected as a native Scoop install. This is intended, and
+> mirrors the tap (where the formula reports `homebrew-formula`, not a cask).
+
 ## How updates work
 
-Both manifests are kept current automatically — there is nothing to edit by hand:
+All manifests are kept current automatically — there is nothing to edit by hand:
 
 - **Scheduled** (`.github/workflows/auto-update.yml`): a weekly cron runs
   `scripts/update_manifests.py`, which re-derives each manifest's version from its
-  own source (GitHub Releases for `keycast`, PyPI for `keycast-pipx`), recomputes
-  the `.zip` hash for the binary manifest, and opens a PR.
+  own source (GitHub Releases for `keycast`, PyPI for `keycast-pipx` and the uv
+  tools), recomputes the `.zip` hash for the binary manifest, and opens a PR.
 - **On release** (`.github/workflows/update-manifest-dispatch.yml`): keycast's
   release pipeline fires a `repository_dispatch` (`update-manifest`) right after
   publishing, so the bump lands promptly instead of waiting for the cron.
@@ -84,7 +91,7 @@ mise run style        # format + lint YAML and workflows
 
 CI (`.github/workflows/ci.yml`) validates every manifest's JSON and, for any
 manifest past its `0.0.0` placeholder, installs it on a Windows runner and
-smoke-tests `keycast version`.
+smoke-tests the installed command (e.g. `keycast version`, `ocom --version`).
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for manifest templates and local testing,
 and [`CLAUDE.md`](CLAUDE.md) for the architecture notes.
