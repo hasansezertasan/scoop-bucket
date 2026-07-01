@@ -9,9 +9,6 @@
     "installer": {
         "script": "uv tool install cobo==$version --force"
     },
-    "post_install": [
-        "uv tool update-shell"
-    ],
     "uninstaller": {
         "script": "uv tool uninstall cobo"
     },
