@@ -33,8 +33,12 @@ scoop install keycast-pipx   # installs via pipx from PyPI
 ### Other tools
 
 This bucket also mirrors the pure-Python tools from the tap's **formulas**. Each
-is a *pipx shim* (the same pattern as `keycast-pipx`): `"depends": "pipx"` and
-`pipx install <tool>` does the real work, so they need Python 3.14+.
+is a *uv tool shim* (the same shim pattern as `keycast-pipx`, but backed by
+[`uv`](https://docs.astral.sh/uv/) instead of pipx): `"depends": "uv"` and
+`uv tool install <tool>` does the real work. uv fetches its own Python on demand,
+so no separate Python install is required. Install runs `uv tool update-shell` to
+put uv's tool directory on your PATH — open a new terminal afterwards so the
+command is picked up.
 
 | Package | What it does | Version source |
 |---|---|---|

@@ -108,10 +108,15 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         shell: pwsh
         run: |
-          # Each package exposes its CLI either via a Scoop shim (binary) or
-          # pipx's bin dir (pipx shim). The smoke-test invocation differs per
-          # tool — mirroring each Homebrew formula's `test do` block — so look it
-          # up by package name (default: `<package> version`).
+          # Each package exposes its CLI either via a Scoop shim (binary), pipx's
+          # bin dir (keycast-pipx), or uv's tool bin dir (the uv-tool shims) —
+          # all of which resolve to ~/.local/bin or scoop/shims, already on PATH
+          # below. (The uv shims run `uv tool update-shell` on install to put
+          # ~/.local/bin on the user's PATH; CI prepends it explicitly since the
+          # registry change doesn't affect the current session.) The smoke-test
+          # invocation differs per tool — mirroring each Homebrew formula's
+          # `test do` block — so look it up by package name (default:
+          # `<package> version`).
           $env:Path = "$env:USERPROFILE\scoop\shims;$env:USERPROFILE\.local\bin;$env:Path"
           $smoke = @{
             "keycast"      = "keycast version"
