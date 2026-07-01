@@ -132,6 +132,7 @@ jobs:
             "keycast-pipx" = "keycast version"
             "cobo"         = "cobo version"
             "hwid"         = "hwid"
+            "olink"        = "olink --version"
           }
           $cmd = $smoke["${{ matrix.package }}"]
           if (-not $cmd) { $cmd = "${{ matrix.package }} version" }

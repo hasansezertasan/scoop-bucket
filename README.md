@@ -44,10 +44,12 @@ install — nothing else to configure.
 |---|---|---|
 | `cobo` | fetches boilerplate files from configurable git repositories | PyPI |
 | `hwid` | extracts a cross-platform hardware ID using native OS detection | PyPI |
+| `olink` | opens external URLs related to your project | PyPI |
 
 ```powershell
 scoop install cobo
 scoop install hwid
+scoop install olink
 ```
 
 > ⚠️ **`hwid` is currently non-functional on recent Windows.** `hwid` 0.1.0 reads
