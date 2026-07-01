@@ -43,10 +43,18 @@ install — nothing else to configure.
 | Package | What it does | Version source |
 |---|---|---|
 | `cobo` | fetches boilerplate files from configurable git repositories | PyPI |
+| `hwid` | extracts a cross-platform hardware ID using native OS detection | PyPI |
 
 ```powershell
 scoop install cobo
+scoop install hwid
 ```
+
+> ⚠️ **`hwid` is currently non-functional on recent Windows.** `hwid` 0.1.0 reads
+> the hardware ID via `wmic`, which Microsoft has removed from current Windows
+> releases, so it crashes at runtime. It installs cleanly and is kept here for
+> parity with the tap; its CI install/smoke test is skipped until upstream drops
+> the `wmic` dependency.
 
 ## How updates work
 
