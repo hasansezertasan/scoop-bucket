@@ -23,12 +23,19 @@ namespace, so each is a distinct installable name):
   "pipx"`; the real install is `pipx install keycast==$version`. Its `url` is the
   static `scripts/noop.ps1` (Scoop requires a URL, but pipx does the work), so its
   hash never changes. `checkver` tracks PyPI via `jsonpath`.
-- `bucket/cobo.json` (and future siblings) — **pipx shims for the tap's
+- `bucket/cobo.json` (and future siblings) — **uv-tool shims for the tap's
   formula-only tools**. The tap ships several pure-Python CLIs as formulas with
-  no cask; each maps to a single pipx-shim manifest here (same shape as
-  `keycast-pipx.json` — `"depends": "pipx"`, `url` is `noop.ps1`, `checkver`
-  tracks PyPI). Because no Windows binary competes for the name, they use the
-  bare tool name (`cobo`, not `cobo-pipx`), mirroring the formula names directly.
+  no cask; each maps to a single shim manifest here (same shape as
+  `keycast-pipx.json` — static `noop.ps1` `url`/hash, `checkver` tracks PyPI),
+  but the install is done by `uv tool install <pkg>==$version` with `"depends":
+  "uv"` rather than pipx. uv fetches its own Python (no separate Python install
+  needed). No manifest PATH mutation is required: Scoop's `uv` package points
+  `UV_TOOL_BIN_DIR` at `scoop\persist\uv\tools\shims` and keeps that on the
+  persistent PATH, so `uv tool install` drops the executable somewhere already
+  runnable. (CI prepends that dir explicitly in the smoke test, since the
+  already-running job session predates the PATH change.) Because no Windows binary
+  competes for the name, they use the bare tool name (`cobo`, not `cobo-pipx`),
+  mirroring the formula names directly.
 - `scripts/update_manifests.py` — the **dual-source updater**. Per manifest it
   reads `checkver` to pick the source (GitHub Releases vs PyPI), bumps `version`,
   and for the binary manifest re-templates the URL and recomputes the sha256. If a
