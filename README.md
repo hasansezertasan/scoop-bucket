@@ -58,12 +58,6 @@ scoop install ocom
 > its runtime usefulness on Windows is limited — it's provided for parity with
 > the tap.
 
-> ⚠️ **`hwid` is currently non-functional on recent Windows.** `hwid` 0.1.0 reads
-> the hardware ID via `wmic`, which Microsoft has removed from current Windows
-> releases, so it crashes at runtime. It installs cleanly and is kept here for
-> parity with the tap; its CI install/smoke test is skipped until upstream drops
-> the `wmic` dependency.
-
 ## How updates work
 
 Both manifests are kept current automatically — there is nothing to edit by hand:
