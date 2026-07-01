@@ -45,12 +45,18 @@ install — nothing else to configure.
 | `cobo` | fetches boilerplate files from configurable git repositories | PyPI |
 | `hwid` | extracts a cross-platform hardware ID using native OS detection | PyPI |
 | `olink` | opens external URLs related to your project | PyPI |
+| `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) | PyPI |
 
 ```powershell
 scoop install cobo
 scoop install hwid
 scoop install olink
+scoop install ocom
 ```
+
+> `ocom` installs cleanly via uv, but it drives Unix-centric network tools, so
+> its runtime usefulness on Windows is limited — it's provided for parity with
+> the tap.
 
 > ⚠️ **`hwid` is currently non-functional on recent Windows.** `hwid` 0.1.0 reads
 > the hardware ID via `wmic`, which Microsoft has removed from current Windows

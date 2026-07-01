@@ -133,6 +133,7 @@ jobs:
             "cobo"         = "cobo version"
             "hwid"         = "hwid"
             "olink"        = "olink --version"
+            "ocom"         = "ocom --version"
           }
           $cmd = $smoke["${{ matrix.package }}"]
           if (-not $cmd) { $cmd = "${{ matrix.package }} version" }
