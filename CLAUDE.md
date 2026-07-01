@@ -23,7 +23,7 @@ namespace, so each is a distinct installable name):
   "pipx"`; the real install is `pipx install keycast==$version`. Its `url` is the
   static `scripts/noop.ps1` (Scoop requires a URL, but pipx does the work), so its
   hash never changes. `checkver` tracks PyPI via `jsonpath`.
-- `bucket/cobo.json` (and future siblings) — **uv-tool shims for the tap's
+- `bucket/cobo.json`, `bucket/hwid.json` (and future siblings) — **uv-tool shims for the tap's
   formula-only tools**. The tap ships several pure-Python CLIs as formulas with
   no cask; each maps to a single shim manifest here (same shape as
   `keycast-pipx.json` — static `noop.ps1` `url`/hash, `checkver` tracks PyPI),

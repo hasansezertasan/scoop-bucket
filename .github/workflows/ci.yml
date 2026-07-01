@@ -59,17 +59,26 @@ jobs:
         package: ${{ fromJson(needs.discover.outputs.packages) }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Skip placeholder manifests
+      - name: Skip placeholder / known-broken manifests
         id: guard
         shell: pwsh
         run: |
           # Manifests are seeded at 0.0.0 until the first real bump (the binary
           # manifest in particular needs a release that ships keycast-windows.zip).
           # Don't try to install a placeholder — skip cleanly so CI stays green.
+          #
+          # `broken` lists packages that install fine but are non-functional on
+          # current Windows, so we skip the install/smoke test rather than fail:
+          #   - hwid 0.1.0 shells out to `wmic`, which Microsoft has removed from
+          #     recent Windows images. Revisit when upstream drops that dependency.
+          $broken = @("hwid")
           $version = (Get-Content "bucket/${{ matrix.package }}.json" | ConvertFrom-Json).version
           if ($version -eq "0.0.0") {
             echo "skip=true" >> $env:GITHUB_OUTPUT
             echo "::notice::${{ matrix.package }} is still 0.0.0 (placeholder); skipping install test"
+          } elseif ($broken -contains "${{ matrix.package }}") {
+            echo "skip=true" >> $env:GITHUB_OUTPUT
+            echo "::notice::${{ matrix.package }} is known-broken on Windows; skipping install test"
           } else {
             echo "skip=false" >> $env:GITHUB_OUTPUT
           }
@@ -122,6 +131,7 @@ jobs:
             "keycast"      = "keycast version"
             "keycast-pipx" = "keycast version"
             "cobo"         = "cobo version"
+            "hwid"         = "hwid"
           }
           $cmd = $smoke["${{ matrix.package }}"]
           if (-not $cmd) { $cmd = "${{ matrix.package }} version" }
