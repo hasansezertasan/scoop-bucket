@@ -1,5 +1,5 @@
 {
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Cross-platform keystroke and mouse-click visualizer built in Python (pipx install)",
     "homepage": "https://github.com/hasansezertasan/keycast",
     "license": "MIT",
