@@ -60,6 +60,8 @@ def _get_json(url: str) -> dict:
 
 
 def _latest_pypi(checkver: dict) -> str:
+    # NB: the manifest's checkver.jsonpath is for Scoop's native checkver; this
+    # updater assumes it's always $.info.version and reads that field directly.
     return _get_json(checkver["url"])["info"]["version"]
 
 
@@ -93,6 +95,13 @@ def _is_downgrade(latest: str, current: str) -> bool:
     when either side has no parseable release, so anything ambiguous proceeds and
     is caught in PR review rather than silently skipped. Guards against a yanked
     PyPI release or a deleted GitHub release making "latest" move backward.
+
+    Contract: numeric release only. Prerelease suffixes are stripped by
+    ``_release_tuple`` (``1.2.3rc1`` -> ``(1, 2, 3)``), so a move from ``1.2.3``
+    to ``1.2.3rc1`` is *not* flagged as a downgrade. This can't fire in practice —
+    both sources exclude prereleases (PyPI ``info.version``, GitHub
+    ``releases/latest``) — but a checkver that started surfacing them would need
+    its own handling here.
     """
     latest_tuple, current_tuple = _release_tuple(latest), _release_tuple(current)
     if not latest_tuple or not current_tuple:
@@ -163,6 +172,9 @@ def _update_manifest(path: Path) -> str | None:
 
 def _matches(stem: str, target: str) -> bool:
     # "keycast" should match both "keycast" and the "keycast-pipx" sibling.
+    # The hyphen split means a target sweeps in every "<target>-*" manifest, so
+    # keep a family's variants under a shared prefix (and unrelated tools under a
+    # bare name, as the uv tools do) to avoid an accidental over-match.
     return stem == target or stem.split("-", 1)[0] == target
 
 

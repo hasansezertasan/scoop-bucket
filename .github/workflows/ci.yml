@@ -52,6 +52,10 @@ jobs:
           echo "Found packages: $packages"
   test:
     name: Test ${{ matrix.package }}
+    # NB: this job does real installs — pipx/uv reach PyPI and the binary
+    # manifest downloads its release zip. That's intentional (we want the
+    # end-to-end install proven), but it means an upstream outage or a yanked
+    # version can turn this red for reasons unrelated to the PR under review.
     runs-on: windows-latest
     timeout-minutes: 30
     needs: [lint, discover]
