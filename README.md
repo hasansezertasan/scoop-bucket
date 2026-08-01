@@ -3,8 +3,7 @@
 My [Scoop](https://scoop.sh) bucket — the Windows counterpart to my
 [Homebrew tap](https://github.com/hasansezertasan/homebrew-tap). It packages the
 projects and tools I maintain for Windows users via Scoop, mirroring the tap in
-both what it ships and how it stays current. [keycast](https://github.com/hasansezertasan/keycast)
-was the first entry; it is one of several.
+both what it ships and how it stays current.
 
 ## Install
 

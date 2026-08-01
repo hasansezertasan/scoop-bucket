@@ -8,8 +8,7 @@ This is hasansezertasan's multi-project [Scoop](https://scoop.sh) bucket (Window
 package manager) — the Windows counterpart to the
 [Homebrew tap](https://github.com/hasansezertasan/homebrew-tap), which it mirrors
 in both functionality and philosophy. It packages the maintainer's projects and
-tools for Windows users — [keycast](https://github.com/hasansezertasan/keycast), a
-cross-platform keystroke and mouse-click visualizer, is one of them.
+tools for Windows users.
 
 ## Architecture
 
