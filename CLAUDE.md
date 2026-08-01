@@ -4,10 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is a [Scoop](https://scoop.sh) bucket (Windows package manager) for
-[keycast](https://github.com/hasansezertasan/keycast), a cross-platform
-keystroke and mouse-click visualizer. It is the Windows counterpart to keycast's
-[Homebrew tap](https://github.com/hasansezertasan/homebrew-tap).
+This is hasansezertasan's multi-project [Scoop](https://scoop.sh) bucket (Windows
+package manager) — the Windows counterpart to the
+[Homebrew tap](https://github.com/hasansezertasan/homebrew-tap), which it mirrors
+in both functionality and philosophy. It packages the maintainer's projects and
+tools for Windows users.
+[keycast](https://github.com/hasansezertasan/keycast) (a cross-platform keystroke
+and mouse-click visualizer) was the bucket's first entry and is its flagship, but
+it is one of several packages here — see the manifests below.
 
 ## Architecture
 
