@@ -131,6 +131,7 @@ jobs:
             "hwid"         = "hwid"
             "olink"        = "olink --version"
             "ocom"         = "ocom --version"
+            "nur"          = "nur --version"
           }
           $cmd = $smoke["${{ matrix.package }}"]
           if (-not $cmd) { $cmd = "${{ matrix.package }} version" }

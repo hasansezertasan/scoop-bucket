@@ -46,12 +46,14 @@ install — nothing else to configure.
 | `hwid` | extracts a cross-platform hardware ID using native OS detection | [repo](https://github.com/hasansezertasan/hwid) · [PyPI](https://pypi.org/project/hwid/) | PyPI |
 | `olink` | opens external URLs related to your project | [repo](https://github.com/hasansezertasan/olink) · [PyPI](https://pypi.org/project/olink/) | PyPI |
 | `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) | [repo](https://github.com/hasansezertasan/ocom) · [PyPI](https://pypi.org/project/ocom/) | PyPI |
+| `nur` | discovers and runs project tasks across npm, Make, PDM/poe, just, Taskfile | [repo](https://github.com/hasansezertasan/nur) · [PyPI](https://pypi.org/project/nur/) | PyPI |
 
 ```powershell
 scoop install cobo
 scoop install hwid
 scoop install olink
 scoop install ocom
+scoop install nur
 ```
 
 > `ocom` installs cleanly via uv, but it drives Unix-centric network tools, so
