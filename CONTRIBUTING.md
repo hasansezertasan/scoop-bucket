@@ -2,9 +2,8 @@
 
 Thanks for your interest in contributing! This bucket distributes the projects
 and tools hasansezertasan maintains to Windows users via [Scoop](https://scoop.sh),
-mirroring the [Homebrew tap](https://github.com/hasansezertasan/homebrew-tap).
-[keycast](https://github.com/hasansezertasan/keycast) was the first entry; it is
-one of several. The bucket carries three kinds of manifest:
+mirroring the [Homebrew tap](https://github.com/hasansezertasan/homebrew-tap). It
+carries three kinds of manifest:
 
 - **Binary** — `bucket/keycast.json`: the prebuilt `keycast-windows.zip` bundle
   (no Python). Mirrors the tap's cask.
@@ -66,7 +65,7 @@ adding a related tool).
 }
 ```
 
-**uv-tool shim** (PyPI package, like `cobo`/`hwid`/`olink`/`ocom`):
+**uv-tool shim** (PyPI package, like `cobo`/`hwid`/`olink`/`ocom`/`nur`):
 
 ```json
 {
