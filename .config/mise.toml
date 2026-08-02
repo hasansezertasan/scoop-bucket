@@ -4,6 +4,10 @@ actionlint = "latest"
 yamlfmt = "latest"
 yamllint = "latest"
 
+[tasks."add-manifest"]
+description = "Scaffold a manifest: `add-manifest binary <repo>` or `add-manifest shim <package>`"
+run = "python3 scripts/add_manifest.py"
+
 [tasks."style"]
 description = "Format and lint all YAML files"
 run = [{ task = "style:fix" }, { task = "style:check" }]

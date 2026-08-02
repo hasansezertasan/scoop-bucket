@@ -34,9 +34,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PACKAGE: ${{ inputs.package }}
         run: |
+          # PACKAGE is empty for "update all"; pass it as an argument only when
+          # set (an empty "" arg would be read as a family filter matching nothing).
           {
             echo 'summary<<SUMMARY_EOF'
-            python scripts/update_manifests.py $PACKAGE
+            if [ -n "$PACKAGE" ]; then
+              python scripts/update_manifests.py "$PACKAGE"
+            else
+              python scripts/update_manifests.py
+            fi
             echo 'SUMMARY_EOF'
           } >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
