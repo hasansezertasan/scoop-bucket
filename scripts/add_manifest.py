@@ -192,16 +192,28 @@ def inspect_zip(path: str, token: str) -> tuple[str | None, str | None, str]:
     extract_dir = tops.pop() if len(tops) == 1 and nested else None
 
     exes = [n for n in names if n.lower().endswith(".exe")]
-    # Compare against the path relative to any wrapping folder Scoop will strip.
-    def _stem(entry: str) -> str:
-        tail = entry.split("/", 1)[1] if extract_dir and "/" in entry else entry
-        return Path(tail).stem.lower()
+
+    def _rel(entry: str) -> str:
+        # Scoop strips `extract_dir`, so `bin` must be the executable's path
+        # relative to that wrapper — not just its basename. `keycast/keycast.exe`
+        # -> `keycast.exe`, but `tool/bin/tool.exe` -> `bin/tool.exe`.
+        if extract_dir and entry.startswith(f"{extract_dir}/"):
+            return entry[len(extract_dir) + 1:]
+        return entry
+
+    def _hint(rel: str) -> str:
+        # A nested executable yields a `bin` path with a subfolder; flag it so the
+        # maintainer confirms Scoop resolves it (most bundles ship the .exe flat).
+        return (f'the executable is nested ("{rel}"); verify Scoop resolves that '
+                "bin path") if "/" in rel else ""
 
     if len(exes) == 1:
-        return extract_dir, Path(exes[0]).name, ""
-    matches = [e for e in exes if _stem(e) == token]
+        rel = _rel(exes[0])
+        return extract_dir, rel, _hint(rel)
+    matches = [e for e in exes if Path(e).stem.lower() == token]
     if len(matches) == 1:
-        return extract_dir, Path(matches[0]).name, ""
+        rel = _rel(matches[0])
+        return extract_dir, rel, _hint(rel)
     if not exes:
         return extract_dir, None, ("no .exe found in the archive; set --bin to the "
                                    "executable Scoop should shim")

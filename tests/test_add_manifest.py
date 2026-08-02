@@ -109,6 +109,19 @@ class InspectZipTest(unittest.TestCase):
         self.assertIsNone(extract_dir)
         self.assertEqual(exe, "tool.exe")
 
+    def test_nested_exe_keeps_path_relative_to_wrapper(self) -> None:
+        # tool/bin/tool.exe under a stripped `extract_dir: tool` must yield
+        # `bin/tool.exe`, not `tool.exe` (which wouldn't exist post-extract).
+        extract_dir, exe, hint = self._inspect(
+            ["tool/bin/tool.exe", "tool/README"], "tool")
+        self.assertEqual(extract_dir, "tool")
+        self.assertEqual(exe, "bin/tool.exe")
+        self.assertIn("nested", hint)
+
+    def test_nested_exe_no_wrapper(self) -> None:
+        _, exe, _ = self._inspect(["bin/tool.exe", "readme.txt"], "tool")
+        self.assertEqual(exe, "bin/tool.exe")
+
     def test_multiple_exes_matches_token(self) -> None:
         extract_dir, exe, hint = self._inspect(
             ["app/app.exe", "app/helper.exe"], "app")

@@ -36,16 +36,22 @@ jobs:
           RAW_PACKAGE: ${{ github.event.client_payload.package }}
           RAW_VERSION: ${{ github.event.client_payload.version }}
         run: |
+          # Validate with bash's =~, which matches the WHOLE string. `grep -E`
+          # matches line-by-line, so a multiline value like $'keycast\nPACKAGE=cobo'
+          # would pass a per-line check and then smuggle a second `PACKAGE=` line
+          # into $GITHUB_ENV below (the second assignment wins). =~ has no record
+          # separator: an embedded CR/LF isn't in the character class and can't
+          # reach the `$` anchor, so any multiline payload is rejected here.
           if [ -z "$RAW_PACKAGE" ]; then
             echo "::error::'package' is required in client_payload"; exit 1
           fi
           # Scoop manifest token: lowercase alphanumerics and hyphens only. The
           # updater treats this as a family prefix (keycast -> keycast*.json).
-          if ! printf '%s' "$RAW_PACKAGE" | grep -qE '^[a-z0-9][a-z0-9-]*$'; then
+          if [[ ! "$RAW_PACKAGE" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
             echo "::error::invalid package token (must match ^[a-z0-9][a-z0-9-]*\$)"; exit 1
           fi
           # Version is optional and informational; if present, restrict to safe chars.
-          if [ -n "$RAW_VERSION" ] && ! printf '%s' "$RAW_VERSION" | grep -qE '^[A-Za-z0-9][A-Za-z0-9._+-]*$'; then
+          if [ -n "$RAW_VERSION" ] && [[ ! "$RAW_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
             echo "::error::invalid version (must match ^[A-Za-z0-9][A-Za-z0-9._+-]*\$)"; exit 1
           fi
           {
