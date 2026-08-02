@@ -42,6 +42,15 @@ namespace, so each is a distinct installable name):
   and for the binary manifest re-templates the URL and recomputes the sha256. If a
   release's `keycast-windows.zip` asset is not published yet, it skips that
   manifest with a warning instead of failing.
+- `scripts/add_manifest.py` — the **scaffolder** (mirrors the tap's
+  `add_formula.py` + `add_cask.py`). Two subcommands: `shim <pypi-package>`
+  (uv-tool by default, `--via pipx` for the `-pipx` sibling) emits a shim manifest;
+  `binary <owner/repo>` reads the latest GitHub release, downloads the `.zip` to
+  hash it, and **peeks inside the archive** to infer `extract_dir` + `bin`. Far
+  simpler than `add_formula.py` — uv/pipx resolve dependencies at install time, so
+  there are no `resource` blocks to compute. Stdlib only; `mise run add-manifest`.
+- `.claude/skills/scoop-add/SKILL.md` — the routing skill for "add a manifest",
+  mirroring the tap's `homebrew-add`.
 - `scripts/noop.ps1` — placeholder for the pipx manifest. Its sha256 is
   `fdcbbea851292d9aa67f598bc6f1ab96e58873385972cd3d209ccab239cbad87`; reuse it for
   any future pipx-based manifest.
@@ -53,9 +62,13 @@ namespace, so each is a distinct installable name):
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs on every PR:
+`.github/workflows/tests.yml` (the cask-agnostic analogue of the tap's
+`tests.yml`; there is no Scoop equivalent of the tap's bottle-building or
+`brew pr-pull`/`publish.yml`) runs on every PR:
 
 - **lint** — validates each manifest's JSON syntax.
+- **unit** — runs the `scripts/` unit tests (`python -m unittest discover -s tests`;
+  covers `update_manifests.py` and `add_manifest.py`).
 - **discover** / **test** — for any manifest past its `0.0.0` placeholder,
   installs it on a Windows runner (with Python 3.14 for the pipx route) and
   smoke-tests the installed command via a per-package map (`keycast version`,
@@ -66,7 +79,7 @@ namespace, so each is a distinct installable name):
 
 All manifests are kept current automatically (mirroring the tap):
 
-**Scheduled** (`.github/workflows/auto-update.yml`, name "Update Manifests"):
+**Scheduled** (`.github/workflows/update-manifests.yml`, name "Update Manifests"):
 
 - Runs weekly on Mondays at 09:00 UTC, and on `workflow_dispatch`.
 - Runs `scripts/update_manifests.py` over all manifests and opens a PR
@@ -77,6 +90,11 @@ All manifests are kept current automatically (mirroring the tap):
 
 - Triggered via `repository_dispatch` (`update-manifest`) from the package repo —
   keycast's `release.yml` fires it right after publishing, for a prompt bump.
+- The `client_payload` is attacker-controllable, so it's read only through `env`
+  and validated against a strict token regex (`^[a-z0-9][a-z0-9-]*$`) before use;
+  the validated value is persisted to `$GITHUB_ENV` and consumed downstream (never
+  the raw payload). On any failure the job opens an issue on this bucket
+  (`if: failure()`, `issues: write`) — mirroring the tap's `update-cask-dispatch.yml`.
 - Package repos trigger it with (the keycast pipeline uses `gh api`):
   ```bash
   gh api repos/hasansezertasan/scoop-bucket/dispatches \

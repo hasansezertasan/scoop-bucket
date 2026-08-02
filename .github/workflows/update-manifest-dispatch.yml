@@ -2,6 +2,11 @@
 name: Update Manifest (Dispatch)
 # Triggered by package repos (e.g. keycast's release.yml) right after they
 # publish a release, for a prompt bump instead of waiting for the cron below.
+#
+# All the work happens HERE, not in the producer: the producer only signals.
+# A producer's dispatch token needs Contents: write on this bucket (required by
+# the POST /dispatches API for fine-grained PATs) but not Pull requests: write —
+# the bucket opens the PR itself with its own GITHUB_TOKEN.
 on:
   repository_dispatch:
     types: [update-manifest]
@@ -12,24 +17,48 @@ on:
 # }
 jobs:
   update:
-    name: Update ${{ github.event.client_payload.package }}
+    name: Update manifest (dispatch)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
+      issues: write  # open a failure issue on this bucket (GITHUB_TOKEN only)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Validate payload
-        # Payload is passed via env (never inlined into the shell) to avoid
-        # ${{ }} template-injection from the dispatch client_payload.
+        # The dispatch payload is attacker-controllable. Read it ONLY through env
+        # (never interpolate ${{ ... }} into the script source, which would let a
+        # value like `keycast"; rm -rf / #` execute), and validate against strict
+        # patterns before any downstream use. Validated values are persisted to
+        # $GITHUB_ENV so later steps consume the sanitized data, not the raw event.
         env:
-          PACKAGE: ${{ github.event.client_payload.package }}
+          RAW_PACKAGE: ${{ github.event.client_payload.package }}
+          RAW_VERSION: ${{ github.event.client_payload.version }}
         run: |
-          if [ -z "$PACKAGE" ]; then
-            echo "::error::'package' is required in client_payload"
-            exit 1
+          # Validate with bash's =~, which matches the WHOLE string. `grep -E`
+          # matches line-by-line, so a multiline value like $'keycast\nPACKAGE=cobo'
+          # would pass a per-line check and then smuggle a second `PACKAGE=` line
+          # into $GITHUB_ENV below (the second assignment wins). =~ has no record
+          # separator: an embedded CR/LF isn't in the character class and can't
+          # reach the `$` anchor, so any multiline payload is rejected here.
+          if [ -z "$RAW_PACKAGE" ]; then
+            echo "::error::'package' is required in client_payload"; exit 1
           fi
+          # Scoop manifest token: lowercase alphanumerics and hyphens only. The
+          # updater treats this as a family prefix (keycast -> keycast*.json).
+          if [[ ! "$RAW_PACKAGE" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "::error::invalid package token (must match ^[a-z0-9][a-z0-9-]*\$)"; exit 1
+          fi
+          # Version is optional and informational; if present, restrict to safe chars.
+          if [ -n "$RAW_VERSION" ] && [[ ! "$RAW_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            echo "::error::invalid version (must match ^[A-Za-z0-9][A-Za-z0-9._+-]*\$)"; exit 1
+          fi
+          {
+            echo "PACKAGE=$RAW_PACKAGE"
+            echo "VERSION=$RAW_VERSION"
+          } >> "$GITHUB_ENV"
+          echo "Validated package: $RAW_PACKAGE"
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -37,9 +66,9 @@ jobs:
       - name: Update manifests
         id: update
         env:
-          # Authenticates the GitHub Releases API call in the updater.
+          # Authenticates the GitHub Releases API call in the updater. PACKAGE is
+          # the validated value from $GITHUB_ENV (set by the step above).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGE: ${{ github.event.client_payload.package }}
         run: |
           {
             echo 'summary<<SUMMARY_EOF'
@@ -60,10 +89,9 @@ jobs:
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: >-
-            chore(${{ github.event.client_payload.package }}): update manifests
-          title: >-
-            chore(${{ github.event.client_payload.package }}): update manifests
+          # env.PACKAGE is the validated token, not the raw payload.
+          commit-message: "chore(${{ env.PACKAGE }}): update manifests"
+          title: "chore(${{ env.PACKAGE }}): update manifests"
           body: |
             Automated update triggered by a package release.
 
@@ -72,6 +100,22 @@ jobs:
 
             ---
             *Triggered by repository_dispatch from the package repo.*
-          branch: auto-update/${{ github.event.client_payload.package }}
+          branch: auto-update/${{ env.PACKAGE }}
           delete-branch: true
           labels: automated,dependencies
+      - name: Report failure
+        # Fire-and-forget dispatch hides failures from the producer, so surface
+        # them as an issue on this bucket (mirrors the tap's cask dispatch). No
+        # cross-repo PAT needed — GITHUB_TOKEN + issues: write. PACKAGE/VERSION
+        # are read from $GITHUB_ENV (set only if validation passed).
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create \
+            --title "Manifest bump failed: ${PACKAGE:-<unknown>} ${VERSION}" \
+            --label "automated,dependencies" \
+            --body "$(printf 'Automated manifest bump triggered by a release dispatch failed.\n\n- Package: %s\n- Version: %s\n- Run: %s\n\nThe weekly update-manifests.yml cron will retry; investigate if it keeps failing.' "${PACKAGE:-<unknown>}" "${VERSION:-<from checkver>}" "$RUN_URL")" \
+            || echo "::warning::could not open failure issue (labels may not exist yet)"

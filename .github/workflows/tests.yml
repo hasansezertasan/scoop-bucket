@@ -1,5 +1,10 @@
 ---
-name: CI
+name: Tests
+# Least privilege: every job here only reads the repo (JSON lint, unit tests, and
+# Windows install/smoke-test). Grant nothing else; the update workflows that need
+# write access declare their own permissions.
+permissions:
+  contents: read
 on:
   push:
     branches: [main]

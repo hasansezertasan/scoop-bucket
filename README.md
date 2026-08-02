@@ -64,7 +64,7 @@ scoop install cobo           # (and hwid / olink / ocom / nur) via uv tool insta
 
 All manifests are kept current automatically — there is nothing to edit by hand:
 
-- **Scheduled** (`.github/workflows/auto-update.yml`): a weekly cron runs
+- **Scheduled** (`.github/workflows/update-manifests.yml`): a weekly cron runs
   `scripts/update_manifests.py`, which re-derives each manifest's version from its
   own source (GitHub Releases for `keycast`, PyPI for `keycast-pipx` and the uv
   tools), recomputes the `.zip` hash for the binary manifest, and opens a PR.
@@ -81,15 +81,21 @@ until then).
 ## Development
 
 ```powershell
-mise run style        # format + lint YAML and workflows
+mise run style                       # format + lint YAML and workflows
+mise run add-manifest shim <pypi>    # scaffold a uv-tool shim from a PyPI package
+mise run add-manifest binary <repo>  # scaffold a binary manifest from a GitHub release
+python -m unittest discover -s tests # run the updater/scaffolder unit tests
 ```
 
-CI (`.github/workflows/ci.yml`) validates every manifest's JSON and, for any
-manifest past its `0.0.0` placeholder, installs it on a Windows runner and
-smoke-tests the installed command (e.g. `keycast version`, `ocom --version`).
+Tests (`.github/workflows/tests.yml`) validate every manifest's JSON, run the
+Python unit tests, and — for any manifest past its `0.0.0` placeholder — install
+it on a Windows runner and smoke-test the installed command (e.g. `keycast
+version`, `ocom --version`).
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for manifest templates and local testing,
-and [`CLAUDE.md`](CLAUDE.md) for the architecture notes.
+`scripts/add_manifest.py` scaffolds a new manifest (a binary download or a
+uv/pipx shim), mirroring the tap's `add_cask.py` / `add_formula.py`. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for manifest templates, the scaffolder, and
+local testing, and [`CLAUDE.md`](CLAUDE.md) for the architecture notes.
 
 ## License
 

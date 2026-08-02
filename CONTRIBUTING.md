@@ -16,6 +16,46 @@ carries three kinds of manifest:
 Most changes are automated version bumps (see [Version updates](#updating-a-version)).
 Manual contributions are usually fixes to a manifest or a workflow.
 
+## Adding a manifest
+
+Scaffold a new manifest with `scripts/add_manifest.py` instead of hand-writing one.
+It mirrors the tap's `add_formula.py` / `add_cask.py` split — route by **what the
+package ships on Windows**:
+
+| Upstream artifact | Route | Command |
+|---|---|---|
+| A PyPI CLI (installed via uv/pipx) | **shim** | `mise run add-manifest shim <package>` |
+| A prebuilt Windows `.zip` on GitHub Releases | **binary** | `mise run add-manifest binary <owner/repo>` |
+
+```bash
+# uv-tool shim (default; bare tool name) — the common case for the tap's tools
+mise run add-manifest shim cobo
+
+# pipx shim (names it <package>-pipx; use when a binary of the same name exists)
+mise run add-manifest shim keycast --via pipx
+
+# binary download — reads the latest release, downloads the .zip to hash it, and
+# infers `extract_dir` + `bin` by peeking inside the archive
+GITHUB_TOKEN=$(gh auth token) mise run add-manifest binary hasansezertasan/keycast
+
+# seed a binary placeholder before the first Windows release exists (--bin required)
+mise run add-manifest binary hasansezertasan/keycast --seed --bin keycast.exe
+```
+
+The scaffolder fills in `version`, `description`, `homepage`, `license`, and the
+`checkver`/`autoupdate` blocks. Then verify the touch-ups it **can't** infer:
+
+- **Description** — pulled raw from PyPI/GitHub; tighten it to match the curated
+  phrasing of the other manifests (the updater never rewrites it).
+- **Binary `bin`/`extract_dir`** — inferred from the archive, but flagged as a
+  guess when there's more than one `.exe`; confirm against the real bundle.
+- **Smoke-test** — the CI map assumes `<package> version`. If the CLI differs
+  (e.g. `--version`), add it to `.github/workflows/tests.yml`.
+
+Then add the package to `README.md`'s table and run `mise run style`. The
+`bucket/` manifests below are the reference shape the scaffolder emits (or a
+starting point for a hand-written variant).
+
 ## Manifest templates
 
 The manifests are already in `bucket/`; these templates are for reference (or for
@@ -90,7 +130,7 @@ filter from accidentally sweeping the tool into an unrelated package's dispatch.
 The `hash` above is `scripts/noop.ps1` — reuse it as-is for any pipx or uv-tool
 shim. After editing, update `README.md`'s package table and run `mise run style`.
 If the tool's smoke-test command isn't `<package> version`, add it to the map in
-`.github/workflows/ci.yml` (the "Smoke-test the installed command" step).
+`.github/workflows/tests.yml` (the "Smoke-test the installed command" step).
 
 ## Testing locally (Windows)
 
@@ -112,7 +152,7 @@ Install **one or the other** — both provide the `keycast` command.
 ## Updating a version
 
 You normally don't have to: `scripts/update_manifests.py` is run by the
-`auto-update.yml` (weekly cron + manual) and `update-manifest-dispatch.yml`
+`update-manifests.yml` (weekly cron + manual) and `update-manifest-dispatch.yml`
 (fired by keycast's release pipeline) workflows, which open a PR with the bump.
 
 To do it by hand: edit `version` (and, for the binary manifest, the `url` and
