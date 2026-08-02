@@ -8,6 +8,7 @@ suite exercises the pure rendering/inference logic offline. Run with
 from __future__ import annotations
 
 import io
+import os
 import sys
 import types
 import unittest
@@ -64,6 +65,15 @@ class HelperTest(unittest.TestCase):
 
     def test_pypi_license_prefers_expression(self) -> None:
         self.assertEqual(am.pypi_license({"license_expression": "MIT"}), "MIT")
+
+    def test_request_attaches_token_only_to_exact_api_host(self) -> None:
+        with mock.patch.dict(os.environ, {"GITHUB_TOKEN": "secret"}):
+            api = am._request("https://api.github.com/repos/o/r")
+            spoof = am._request("https://evil.example.com/api.github.com/x")
+            pypi = am._request("https://pypi.org/pypi/x/json")
+        self.assertTrue(api.has_header("Authorization"))
+        self.assertFalse(spoof.has_header("Authorization"))
+        self.assertFalse(pypi.has_header("Authorization"))
 
     def test_templatize_replaces_version(self) -> None:
         self.assertEqual(am.templatize("v1.2.3", "1.2.3"), "v$version")
@@ -236,14 +246,34 @@ class AddShimTest(unittest.TestCase):
 
 
 class WriteManifestTest(unittest.TestCase):
+    def _tmp_bucket(self) -> Path:
+        import tempfile
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return Path(tmp.name)
+
     def test_rejects_path_separator(self) -> None:
-        with self.assertRaises(SystemExit):
-            am._write_manifest("../evil", {})
+        with mock.patch.object(am, "BUCKET", self._tmp_bucket()):
+            with self.assertRaises(SystemExit):
+                am._write_manifest("../evil", {})
 
     def test_refuses_existing(self) -> None:
-        # keycast.json already exists in the real bucket/.
-        with self.assertRaises(SystemExit):
-            am._write_manifest("keycast", {})
+        # Self-contained: create the collision in a temp bucket rather than
+        # depending on a real manifest in bucket/ (which would also risk the
+        # write escaping into the working tree if that file were ever removed).
+        bucket = self._tmp_bucket()
+        (bucket / "dupe.json").write_text("{}", encoding="utf-8")
+        with mock.patch.object(am, "BUCKET", bucket):
+            with self.assertRaises(SystemExit):
+                am._write_manifest("dupe", {})
+
+    def test_writes_into_patched_bucket(self) -> None:
+        bucket = self._tmp_bucket()
+        with mock.patch.object(am, "BUCKET", bucket):
+            out = am._write_manifest("newpkg", {"version": "1.0.0"})
+        self.assertTrue(out.exists())
+        self.assertEqual(out.read_text().rstrip("\n"), '{\n    "version": "1.0.0"\n}')
 
 
 class PypiInfoTest(unittest.TestCase):

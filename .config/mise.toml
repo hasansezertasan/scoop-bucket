@@ -1,12 +1,16 @@
 [tools]
 action-validator = "latest"
 actionlint = "latest"
+# Provides `python` for the scaffolder task below. `python3` isn't reliable on
+# Windows (the stock CPython installer ships `python.exe`, and `python3` often
+# resolves to the Microsoft Store alias stub), and this bucket targets Windows.
+python = "3.14"
 yamlfmt = "latest"
 yamllint = "latest"
 
 [tasks."add-manifest"]
 description = "Scaffold a manifest: `add-manifest binary <repo>` or `add-manifest shim <package>`"
-run = "python3 scripts/add_manifest.py"
+run = "python scripts/add_manifest.py"
 
 [tasks."style"]
 description = "Format and lint all YAML files"

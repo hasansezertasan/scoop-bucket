@@ -34,9 +34,11 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 GITHUB_API = "https://api.github.com"
 PYPI = "https://pypi.org/pypi"
+BUCKET = Path(__file__).resolve().parent.parent / "bucket"
 
 # The static placeholder every shim manifest points its `url` at. Scoop requires
 # a URL + hash, but the real install is done by the installer script, so the URL
@@ -62,7 +64,10 @@ def _request(url: str, *, accept: str = "application/json") -> urllib.request.Re
     req.add_header("Accept", accept)
     req.add_header("User-Agent", "scoop-bucket-add-manifest")
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    if token and "api.github.com" in url:
+    # Match the host EXACTLY — a substring test would leak the token to a URL like
+    # https://evil.example.com/api.github.com/x. Asset URLs come from API responses,
+    # so the value isn't fully under our control.
+    if token and urlsplit(url).hostname == "api.github.com":
         req.add_header("Authorization", f"Bearer {token}")
     return req
 
@@ -92,10 +97,9 @@ def _write_manifest(name: str, data: dict) -> Path:
     """Serialize a manifest to ``bucket/<name>.json`` (4-space indent, trailing NL)."""
     if "/" in name or "\\" in name:
         sys.exit(f"error: name {name!r} must not contain path separators")
-    bucket = Path(__file__).resolve().parent.parent / "bucket"
-    out = bucket / f"{name}.json"
+    out = BUCKET / f"{name}.json"
     if out.exists():
-        sys.exit(f"error: {out.relative_to(bucket.parent)} already exists; edit it "
+        sys.exit(f"error: {out.relative_to(BUCKET.parent)} already exists; edit it "
                  "directly or pick another --name")
     out.write_text(json.dumps(data, indent=4) + "\n", encoding="utf-8")
     return out
