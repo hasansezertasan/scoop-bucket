@@ -1,60 +1,53 @@
 # scoop-bucket
 
-A [Scoop](https://scoop.sh) bucket for [keycast](https://github.com/hasansezertasan/keycast)
-— a cross-platform keystroke and mouse-click visualizer.
+My [Scoop](https://scoop.sh) bucket — the Windows counterpart to my
+[Homebrew tap](https://github.com/hasansezertasan/homebrew-tap). It packages the
+projects and tools I maintain for Windows users via Scoop, mirroring the tap in
+both what it ships and how it stays current.
 
 ## Install
 
 ```powershell
-scoop bucket add keycast https://github.com/hasansezertasan/scoop-bucket
-scoop install keycast
+scoop bucket add hasansezertasan https://github.com/hasansezertasan/scoop-bucket
+scoop install <package>
 ```
 
-## Manifests
+## Packages
 
-Mirroring keycast's [Homebrew tap](https://github.com/hasansezertasan/homebrew-tap)
-(which pairs a **cask** with a **formula**), this bucket ships two ways to install
-the same app. Scoop has no cask/formula namespace, so each is its own name:
+Each package here mirrors an entry in the tap. The tap pairs a **cask** (a
+prebuilt bundle) with a **formula** (a Python CLI); Scoop has no cask/formula
+namespace, so every installable is its own name. Three install routes are used:
 
-| Package | Mirrors | What it does | Needs Python? | Version source |
+- **Binary** — downloads a prebuilt `.zip` bundle and shims the `.exe`. No Python
+  required. Mirrors a **cask**.
+- **pipx shim** — `"depends": "pipx"`; runs `pipx install <pkg>`. Mirrors a
+  **formula**.
+- **uv-tool shim** — `"depends": "uv"`; runs `uv tool install <pkg>`. uv fetches
+  its own Python on demand, so no separate Python install is required, and Scoop's
+  `uv` package keeps uv's tool directory on your PATH. Mirrors a formula-only tool.
+
+| Package | What it does | Route | Needs Python? | Source |
 |---|---|---|---|---|
-| `keycast` | the **cask** | downloads the `keycast-windows.zip` bundle and shims `keycast.exe` | No | GitHub Releases |
-| `keycast-pipx` | the **formula** | runs `pipx install keycast` (a pipx shim) | Yes (3.14+) | PyPI |
+| `keycast` | keystroke & mouse-click visualizer ([repo](https://github.com/hasansezertasan/keycast)) | binary | No | GitHub Releases |
+| `keycast-pipx` | the same app, installed from PyPI | pipx shim | Yes (3.14+) | PyPI |
+| `cobo` | fetches boilerplate files from configurable git repositories ([repo](https://github.com/hasansezertasan/cobo) · [PyPI](https://pypi.org/project/cobo/)) | uv-tool shim | No¹ | PyPI |
+| `hwid` | extracts a cross-platform hardware ID using native OS detection ([repo](https://github.com/hasansezertasan/hwid) · [PyPI](https://pypi.org/project/hwid/)) | uv-tool shim | No¹ | PyPI |
+| `olink` | opens external URLs related to your project ([repo](https://github.com/hasansezertasan/olink) · [PyPI](https://pypi.org/project/olink/)) | uv-tool shim | No¹ | PyPI |
+| `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) ([repo](https://github.com/hasansezertasan/ocom) · [PyPI](https://pypi.org/project/ocom/)) | uv-tool shim | No¹ | PyPI |
+| `nur` | discovers and runs project tasks across npm, Make, PDM/poe, just, Taskfile ([repo](https://github.com/hasansezertasan/nur) · [PyPI](https://pypi.org/project/nur/)) | uv-tool shim | No¹ | PyPI |
+
+¹ uv fetches its own Python, so nothing else needs to be installed.
 
 ```powershell
 scoop install keycast        # prebuilt bundle, no Python required
-scoop install keycast-pipx   # installs via pipx from PyPI
+scoop install keycast-pipx   # the same app, installed via pipx from PyPI
+scoop install cobo           # (and hwid / olink / ocom / nur) via uv tool install
 ```
 
-> Install **one or the other**, not both — they both provide the `keycast`
-> command. Most users want `keycast` (no Python needed); choose `keycast-pipx`
-> if you already use pipx and prefer the PyPI package.
-
-### Other tools
-
-This bucket also mirrors the pure-Python tools from the tap's **formulas**. Each
-is a *uv tool shim* (the same shim pattern as `keycast-pipx`, but backed by
-[`uv`](https://docs.astral.sh/uv/) instead of pipx): `"depends": "uv"` and
-`uv tool install <tool>` does the real work. uv fetches its own Python on demand,
-so no separate Python install is required. Scoop's `uv` package already keeps uv's
-tool directory on your PATH, so the command is available in a new terminal after
-install — nothing else to configure.
-
-| Package | What it does | Source | Version source |
-|---|---|---|---|
-| `cobo` | fetches boilerplate files from configurable git repositories | [repo](https://github.com/hasansezertasan/cobo) · [PyPI](https://pypi.org/project/cobo/) | PyPI |
-| `hwid` | extracts a cross-platform hardware ID using native OS detection | [repo](https://github.com/hasansezertasan/hwid) · [PyPI](https://pypi.org/project/hwid/) | PyPI |
-| `olink` | opens external URLs related to your project | [repo](https://github.com/hasansezertasan/olink) · [PyPI](https://pypi.org/project/olink/) | PyPI |
-| `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) | [repo](https://github.com/hasansezertasan/ocom) · [PyPI](https://pypi.org/project/ocom/) | PyPI |
-| `nur` | discovers and runs project tasks across npm, Make, PDM/poe, just, Taskfile | [repo](https://github.com/hasansezertasan/nur) · [PyPI](https://pypi.org/project/nur/) | PyPI |
-
-```powershell
-scoop install cobo
-scoop install hwid
-scoop install olink
-scoop install ocom
-scoop install nur
-```
+> **keycast ships two ways** — install **one or the other**, not both; they both
+> provide the `keycast` command. Most users want `keycast` (no Python needed);
+> choose `keycast-pipx` if you already use pipx and prefer the PyPI package. This
+> mirrors the tap, where keycast is both a cask and a formula.
 
 > `ocom` installs cleanly via uv, but it drives Unix-centric network tools, so
 > its runtime usefulness on Windows is limited — it's provided for parity with

@@ -1,16 +1,17 @@
 # Contributing
 
-Thanks for your interest in contributing! This bucket exists to distribute
-[keycast](https://github.com/hasansezertasan/keycast) and its sibling tools to
-Windows users via [Scoop](https://scoop.sh). It carries three kinds of manifest:
+Thanks for your interest in contributing! This bucket distributes the projects
+and tools hasansezertasan maintains to Windows users via [Scoop](https://scoop.sh),
+mirroring the [Homebrew tap](https://github.com/hasansezertasan/homebrew-tap). It
+carries three kinds of manifest:
 
 - **Binary** — `bucket/keycast.json`: the prebuilt `keycast-windows.zip` bundle
   (no Python). Mirrors the tap's cask.
 - **pipx shim** — `bucket/keycast-pipx.json`: a `pipx install keycast` shim
   (needs Python 3.14+). Mirrors the tap's formula.
 - **uv-tool shim** — `bucket/cobo.json`, `bucket/hwid.json`, `bucket/olink.json`,
-  `bucket/ocom.json`: each runs `uv tool install <tool>` (uv fetches its own
-  Python). Mirrors the tap's formula-only tools.
+  `bucket/ocom.json`, `bucket/nur.json`: each runs `uv tool install <tool>` (uv
+  fetches its own Python). Mirrors the tap's formula-only tools.
 
 Most changes are automated version bumps (see [Version updates](#updating-a-version)).
 Manual contributions are usually fixes to a manifest or a workflow.
@@ -64,7 +65,7 @@ adding a related tool).
 }
 ```
 
-**uv-tool shim** (PyPI package, like `cobo`/`hwid`/`olink`/`ocom`):
+**uv-tool shim** (PyPI package, like `cobo`/`hwid`/`olink`/`ocom`/`nur`):
 
 ```json
 {
@@ -95,7 +96,7 @@ If the tool's smoke-test command isn't `<package> version`, add it to the map in
 
 ```powershell
 # Add this checkout as a local bucket
-scoop bucket add keycast C:\path\to\this\repo
+scoop bucket add hasansezertasan C:\path\to\this\repo
 
 # Binary route (no Python needed)
 scoop install keycast
