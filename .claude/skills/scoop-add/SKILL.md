@@ -83,6 +83,15 @@ provide the same command, so a user installs **one or the other** — keep the
 disambiguation note in `README.md`. This mirrors the tap, where `keycast` is both a
 cask and a formula.
 
+## Regenerate the README catalog
+
+After scaffolding, run `python scripts/gen_readme_packages.py` to refresh the
+Packages table in `README.md` from the new manifest — the `readme.yml` workflow
+runs `--check` and **fails the PR if the table is stale**. The table is machine-derived;
+only the prose notes below it (outside the `BEGIN/END PACKAGES TABLE` markers) are
+hand-written, so update those if the addition needs a caveat (like the keycast
+disambiguation note).
+
 ## Open the PR
 
 - **One manifest per PR** (a "ships both" addition may add its two manifests

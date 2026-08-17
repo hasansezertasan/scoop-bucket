@@ -49,6 +49,17 @@ namespace, so each is a distinct installable name):
   hash it, and **peeks inside the archive** to infer `extract_dir` + `bin`. Far
   simpler than `add_formula.py` — uv/pipx resolve dependencies at install time, so
   there are no `resource` blocks to compute. Stdlib only; `mise run add-manifest`.
+- `scripts/gen_readme_packages.py` — the **README catalog generator** (mirrors the
+  tap's `gen_readme_packages.py`). Scans `bucket/*.json`, classifies each manifest
+  into a route (`binary`/`pipx`/`uv`) from its own fields, and rewrites the
+  Packages table between the `BEGIN/END PACKAGES TABLE` markers in `README.md` —
+  so the catalog never drifts from what ships. A dedicated `readme.yml` workflow
+  runs `--check` and fails the PR if the table is stale — it lives apart from
+  `tests.yml` (which ignores `**.md`) and *opts in* to `README.md` + `bucket/**`
+  so a hand-edited row is caught too. After adding or renaming a manifest, run
+  `python scripts/gen_readme_packages.py` (stdlib only). Manifest-derived cells
+  are pipe-escaped and newline-collapsed. The prose notes below the table stay
+  hand-written, outside the markers.
 - `.claude/skills/scoop-add/SKILL.md` — the routing skill for "add a manifest",
   mirroring the tap's `homebrew-add`.
 - `scripts/noop.ps1` — placeholder for the pipx manifest. Its sha256 is

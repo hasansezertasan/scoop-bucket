@@ -1,0 +1,39 @@
+---
+name: README catalog
+# Guards the generated Packages table in README.md. Kept separate from tests.yml
+# because that workflow ignores '**.md' (to avoid running the heavy Windows
+# install matrix on doc edits) — which would let a hand-edited or deleted table
+# row slip through. This lightweight check therefore *opts in* to README.md (plus
+# the manifests and generator it derives from) so a stale table is always caught,
+# whether the drift comes from a manifest change or a manual README edit.
+permissions:
+  contents: read
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bucket/**'
+      - 'README.md'
+      - 'scripts/gen_readme_packages.py'
+      - '.github/workflows/readme.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'bucket/**'
+      - 'README.md'
+      - 'scripts/gen_readme_packages.py'
+      - '.github/workflows/readme.yml'
+  workflow_dispatch:
+jobs:
+  freshness:
+    name: Packages table is up to date
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Check README packages table is up to date
+        run: python scripts/gen_readme_packages.py --check
