@@ -35,13 +35,14 @@ namespace, so every installable is its own name. Three install routes are used:
 | `olink` | opens external URLs related to your project ([repo](https://github.com/hasansezertasan/olink) · [PyPI](https://pypi.org/project/olink/)) | uv-tool shim | No¹ | PyPI |
 | `ocom` | TUI for managing network/privacy tools (OpenVPN, SpoofDPI, WARP) ([repo](https://github.com/hasansezertasan/ocom) · [PyPI](https://pypi.org/project/ocom/)) | uv-tool shim | No¹ | PyPI |
 | `nur` | discovers and runs project tasks across npm, Make, PDM/poe, just, Taskfile ([repo](https://github.com/hasansezertasan/nur) · [PyPI](https://pypi.org/project/nur/)) | uv-tool shim | No¹ | PyPI |
+| `peta` | human-friendly viewer for Python package metadata ([repo](https://github.com/hasansezertasan/peta) · [PyPI](https://pypi.org/project/peta/)) | uv-tool shim | No¹ | PyPI |
 
 ¹ uv fetches its own Python, so nothing else needs to be installed.
 
 ```powershell
 scoop install keycast        # prebuilt bundle, no Python required
 scoop install keycast-pipx   # the same app, installed via pipx from PyPI
-scoop install cobo           # (and hwid / olink / ocom / nur) via uv tool install
+scoop install cobo           # (and hwid / olink / ocom / nur / peta) via uv tool install
 ```
 
 > **keycast ships two ways** — install **one or the other**, not both; they both
