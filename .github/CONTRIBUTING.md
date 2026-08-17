@@ -158,7 +158,7 @@ You normally don't have to: `scripts/update_manifests.py` is run by the
 To do it by hand: edit `version` (and, for the binary manifest, the `url` and
 `hash`), then open a PR. CI installs the manifest and smoke-tests it.
 
-See [`CLAUDE.md`](CLAUDE.md) for the full architecture notes.
+See [`CLAUDE.md`](../CLAUDE.md) for the full architecture notes.
 
 ## Questions?
 
