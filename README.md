@@ -98,7 +98,7 @@ version`, `ocom --version`).
 `scripts/add_manifest.py` scaffolds a new manifest (a binary download or a
 uv/pipx shim), mirroring the tap's `add_cask.py` / `add_formula.py`. See
 [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for manifest templates, the scaffolder, and
-local testing, and [`CLAUDE.md`](CLAUDE.md) for the architecture notes.
+local testing, and [`AGENTS.md`](AGENTS.md) for the architecture notes.
 
 ## License
 
