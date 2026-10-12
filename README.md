@@ -93,7 +93,7 @@ python -m unittest discover -s tests # run the updater/scaffolder unit tests
 Tests (`.github/workflows/tests.yml`) validate every manifest's JSON, run the
 Python unit tests, and — for any manifest past its `0.0.0` placeholder — install
 it on a Windows runner and smoke-test the installed command (e.g. `keycast
-version`, `ocom --version`).
+version`, `ocom version`).
 
 `scripts/add_manifest.py` scaffolds a new manifest (a binary download or a
 uv/pipx shim), mirroring the tap's `add_cask.py` / `add_formula.py`. See

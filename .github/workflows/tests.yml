@@ -135,7 +135,7 @@ jobs:
             "cobo"         = "cobo version"
             "hwid"         = "hwid"
             "olink"        = "olink --version"
-            "ocom"         = "ocom --version"
+            "ocom"         = "ocom version"
             "nur"          = "nur --version"
             "peta"         = "peta --version"
           }
