@@ -75,6 +75,8 @@ jobs:
           PIPX_DEFAULT_PYTHON="$(command -v python)"
           export PIPX_DEFAULT_PYTHON
           mise trust .config/mise.toml
+          # python is configured in mise.toml, so pipx:cobo needs it installed first.
+          mise install python
           mise install pipx:cobo uv
           mise exec -- cobo check --strict
   discover:
@@ -213,7 +215,12 @@ jobs:
           )
           $env:Path = $toolPaths -join ";"
           # Add package-specific commands here when `version` is not supported.
-          $smoke = @{}
+          $smoke = @{
+            "hwid"  = "hwid"
+            "olink" = "olink --version"
+            "nur"   = "nur --version"
+            "peta"  = "peta --version"
+          }
           $cmd = $smoke[$env:PACKAGE]
           if (-not $cmd) {
             $command = $env:PACKAGE -replace '-pipx$', ''
