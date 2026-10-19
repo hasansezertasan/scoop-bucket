@@ -1,0 +1,19 @@
+{
+  // MD013 (line length) is disabled: prose docs (README, ADRs, research notes)
+  // wrap at whatever width reads well rather than a fixed column.
+  "config": {
+    "default": true,
+    "MD013": false,
+  },
+  // MD041 (first line is an h1) is disabled for the pull request template only:
+  // it starts at an h2, because GitHub shows the PR title above it.
+  "overrides": [
+    {
+      "filter": [".github/pull_request_template.md"],
+      "config": { "MD041": false },
+      "combine": "merge",
+    },
+  ],
+  "globs": ["**/*.md", "**/*.markdown"],
+  "gitignore": true,
+}

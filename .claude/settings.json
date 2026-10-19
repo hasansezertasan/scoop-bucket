@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "scoop-bucket-skills@scoop-bucket-skills": true
+  },
+  "extraKnownMarketplaces": {
+    "scoop-bucket-skills": {
+      "source": {
+        "source": "github",
+        "repo": "hasansezertasan/scoop-bucket-skills"
+      }
+    }
+  }
+}

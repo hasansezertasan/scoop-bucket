@@ -10,6 +10,8 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -21,28 +23,33 @@ class RouteTest(unittest.TestCase):
         self.assertEqual(gen.route({"depends": "pipx"}), "pipx")
         self.assertEqual(gen.route({"depends": "uv"}), "uv")
 
+    def test_classifies_by_depends_list(self) -> None:
+        self.assertEqual(gen.route({"depends": ["python", "pipx"]}), "pipx")
+        self.assertEqual(gen.route({"depends": ["python", "uv"]}), "uv")
+        self.assertEqual(gen.route({"depends": ["git"]}), "binary")
+
     def test_binary_when_no_depends(self) -> None:
-        self.assertEqual(gen.route({"bin": "keycast.exe"}), "binary")
+        self.assertEqual(gen.route({"bin": "widget.exe"}), "binary")
 
 
 class PypiNameTest(unittest.TestCase):
     def test_parses_installed_package_from_script(self) -> None:
-        manifest = {"installer": {"script": "pipx install keycast==0.2.0 --force"}}
-        self.assertEqual(gen.pypi_name(manifest, "keycast-pipx"), "keycast")
+        manifest = {"installer": {"script": "pipx install widget==0.2.0 --force"}}
+        self.assertEqual(gen.pypi_name(manifest, "widget-pipx"), "widget")
 
     def test_falls_back_to_stem(self) -> None:
-        self.assertEqual(gen.pypi_name({}, "cobo"), "cobo")
+        self.assertEqual(gen.pypi_name({}, "widget"), "widget")
 
 
 class LinksTest(unittest.TestCase):
     def test_binary_gets_repo_only(self) -> None:
-        out = gen.links({"homepage": "https://example.com"}, "binary", "keycast")
+        out = gen.links({"homepage": "https://example.com"}, "binary", "widget")
         self.assertEqual(out, " ([repo](https://example.com))")
 
     def test_shim_gets_repo_and_pypi(self) -> None:
-        out = gen.links({"homepage": "https://example.com"}, "uv", "cobo")
+        out = gen.links({"homepage": "https://example.com"}, "uv", "widget")
         self.assertIn("[repo](https://example.com)", out)
-        self.assertIn("[PyPI](https://pypi.org/project/cobo/)", out)
+        self.assertIn("[PyPI](https://pypi.org/project/widget/)", out)
 
 
 class CellTest(unittest.TestCase):
@@ -72,17 +79,32 @@ class TableTest(unittest.TestCase):
         self.assertNotIn("(pipx install)", table)
 
     def test_binary_precedes_shims(self) -> None:
-        table = gen.build_table()
-        self.assertLess(table.find("`keycast`"), table.find("`keycast-pipx`"))
+        with TemporaryDirectory() as tmp:
+            bucket = Path(tmp)
+            (bucket / "binary.json").write_text(
+                '{"description":"Binary","homepage":"https://example.com","bin":"tool.exe"}'
+            )
+            (bucket / "shim.json").write_text(
+                '{"description":"Shim","homepage":"https://example.com","depends":"uv"}'
+            )
+            with patch.object(gen, "BUCKET", bucket):
+                table = gen.build_table()
+        self.assertLess(table.find("`binary`"), table.find("`shim`"))
+
+    def test_empty_bucket_has_only_headers(self) -> None:
+        with TemporaryDirectory() as tmp, patch.object(gen, "BUCKET", Path(tmp)):
+            table = gen.build_table()
+        self.assertIn("| Package | What it does | Route | Needs Python? | Source |", table)
+        self.assertEqual(table.count("\n"), 3)
 
 
 class ReadmeFreshnessTest(unittest.TestCase):
     def test_readme_table_is_current(self) -> None:
-        current = gen.README.read_text()
+        current = gen.README.read_text(encoding="utf-8")
         updated = gen.splice(current, gen.build_table())
         self.assertEqual(current, updated,
                          "README.md packages table is stale; run "
-                         "`python scripts/gen_readme_packages.py`")
+                         "`mise run generate-readme`")
 
 
 if __name__ == "__main__":

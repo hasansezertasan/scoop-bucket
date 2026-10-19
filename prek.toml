@@ -1,0 +1,81 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+#
+# This is the commit-time gate. `mise run style` is the same YAML/Actions
+# toolchain without a hook install, for contributors who would rather not
+# install hooks; the overlap is deliberate.
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "check-added-large-files", name = "Check added large files", args = [
+    "--maxkb=1000",
+  ] },
+  { id = "check-toml", name = "Check TOML" },
+  { id = "check-yaml", name = "Check YAML" },
+  { id = "check-json", name = "Check JSON" },
+  { id = "end-of-file-fixer", name = "End of file fixer" },
+  # .gitignore is a Cobo-sealed block (hash-verified in cobo.lock); upstream
+  # github/gitignore ships trailing whitespace on some comment lines, so
+  # trimming it here would break the seal.
+  { id = "trailing-whitespace", name = "Trailing whitespace", exclude = '^\.gitignore$' },
+  { id = "check-merge-conflict", name = "Check Merge Conflict", args = [
+    "--assume-in-merge",
+  ] },
+  { id = "detect-private-key", name = "Detect Private Key" },
+]
+[[repos]]
+repo = "https://github.com/crate-ci/typos"
+rev = "v1.50.1"
+# `exclude` here, not just `[files] extend-exclude` in the config: typos honours
+# its own excludes only when walking a directory, and prek hands hooks explicit
+# filenames. Without this the hook would auto-rewrite the Cobo-sealed
+# .gitignore. The config keeps its entry too, for directory-traversal runs.
+hooks = [
+  { id = "typos", name = "Typos Linter", exclude = '^\.gitignore$', args = [
+    "--config",
+    ".config/_typos.toml",
+  ] },
+]
+[[repos]]
+repo = "https://github.com/python-jsonschema/check-jsonschema"
+rev = "0.38.0"
+# `check-github-workflows` validates the workflow files themselves;
+# `check-github-actions` (composite action.yml) is omitted — a bucket has none.
+hooks = [
+  { id = "check-github-workflows", name = "Validate GitHub Workflows", args = [
+    "--verbose",
+  ] },
+]
+[[repos]]
+repo = "https://github.com/rhysd/actionlint"
+rev = "v1.7.12"
+hooks = [{ id = "actionlint", name = "Actionlint Linter" }]
+[[repos]]
+repo = "https://github.com/zizmorcore/zizmor-pre-commit"
+rev = "v1.30.0"
+hooks = [{ id = "zizmor", name = "Zizmor GitHub Actions Auditor", files = '\.github/workflows/.*\.ya?ml$' }]
+[[repos]]
+repo = "https://github.com/adrienverge/yamllint.git"
+rev = "v1.38.0"
+hooks = [{ id = "yamllint", name = "YAML Linter", args = ["-c", ".config/.yamllint.yaml"] }]
+[[repos]]
+repo = "https://github.com/DavidAnson/markdownlint-cli2"
+rev = "v0.23.2"
+hooks = [
+  { id = "markdownlint-cli2", name = "Markdown Linter", args = [
+    "--config",
+    ".config/.markdownlint-cli2.jsonc",
+  ] },
+]
+[[repos]]
+repo = "https://github.com/google/yamlfmt"
+rev = "v0.21.0"
+hooks = [{ id = "yamlfmt", name = "YAML Formatter", args = ["-conf", ".config/.yamlfmt.yml"] }]
+[[repos]]
+repo = "https://github.com/asottile/pyupgrade"
+rev = "v3.21.2"
+# The scripts already use 3.10+ syntax (`str | None`); the unit-test workflow
+# runs them on 3.15.
+hooks = [{ id = "pyupgrade", args = ["--py310-plus"] }]

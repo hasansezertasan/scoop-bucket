@@ -1,10 +1,7 @@
 ---
 name: Tests
-# Least privilege: every job here only reads the repo (JSON lint, unit tests, and
-# Windows install/smoke-test). Grant nothing else; the update workflows that need
-# write access declare their own permissions.
-permissions:
-  contents: read
+# Deny-by-default; each job opts back into exactly what it needs.
+permissions: {}
 on:
   push:
     branches: [main]
@@ -13,16 +10,24 @@ on:
     branches: [main]
     paths-ignore: ['**.md', 'LICENSE']
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   lint:
     name: Lint manifests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Validate JSON syntax
         run: |
-          for file in bucket/*.json; do
+          find bucket -maxdepth 1 -name '*.json' -print0 |
+          while IFS= read -r -d '' file; do
             echo "Validating $file..."
             python -m json.tool "$file" > /dev/null
           done
@@ -30,30 +35,90 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.15"
-      - name: Run update_manifests tests
+      - name: Run unit tests
         run: python -m unittest discover -s tests -v
+  boilerplate:
+    name: Check managed boilerplate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      # Cobo (installed by mise through pipx) needs Python >= 3.14, newer
+      # than the runner's system Python, so install one here and point pipx
+      # at it below: pipx ignores PATH and uses its own default interpreter.
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.15"
+      # The Cobo version is pinned once, in .config/mise.toml.
+      - name: Install mise
+        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7  # v5.2.0
+        with:
+          install: false
+          cache: false
+      - name: Check Cobo-managed files
+        run: |
+          PIPX_DEFAULT_PYTHON="$(command -v python)"
+          export PIPX_DEFAULT_PYTHON
+          mise trust .config/mise.toml
+          # python is configured in mise.toml, so pipx:cobo needs it installed first.
+          mise install python
+          mise install pipx:cobo uv
+          mise exec -- cobo check --strict
   discover:
     name: Discover packages
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     outputs:
       packages: ${{ steps.find.outputs.packages }}
+      has-packages: ${{ steps.find.outputs.has-packages }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Find all packages
         id: find
         run: |
+          invalid=$(
+            find bucket -maxdepth 1 -name '*.json' -exec basename {} .json \; \
+              | while IFS= read -r package; do
+                  if [[ ! "$package" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+                    echo "$package"
+                  fi
+                done
+          )
+          if [ -n "$invalid" ]; then
+            echo "::error::invalid manifest names (expected lowercase alphanumerics and hyphens): $invalid"
+            exit 1
+          fi
           packages=$(
-            for f in bucket/*.json; do basename "$f" .json; done \
+            find bucket -maxdepth 1 -name '*.json' -exec basename {} .json \; \
+              | sort \
               | jq -R -s -c 'split("\n") | map(select(length > 0))'
           )
-          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          if [ "$packages" = "[]" ]; then
+            echo 'packages=[""]' >> "$GITHUB_OUTPUT"
+            echo "has-packages=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "packages=$packages" >> "$GITHUB_OUTPUT"
+            echo "has-packages=true" >> "$GITHUB_OUTPUT"
+          fi
           echo "Found packages: $packages"
   test:
     name: Test ${{ matrix.package }}
@@ -63,28 +128,40 @@ jobs:
     # version can turn this red for reasons unrelated to the PR under review.
     runs-on: windows-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     needs: [lint, discover]
+    if: needs.discover.outputs.has-packages == 'true'
     strategy:
       fail-fast: false
       matrix:
         package: ${{ fromJson(needs.discover.outputs.packages) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Skip placeholder manifests
         id: guard
         shell: pwsh
+        env:
+          PACKAGE: ${{ matrix.package }}
         run: |
-          # Manifests are seeded at 0.0.0 until the first real bump (the binary
-          # manifest in particular needs a release that ships keycast-windows.zip).
-          # Don't try to install a placeholder — skip cleanly so CI stays green.
-          $version = (Get-Content "bucket/${{ matrix.package }}.json" | ConvertFrom-Json).version
-          if ($version -eq "0.0.0") {
+          # A binary manifest may be seeded before its first release. Do not try
+          # to install that placeholder; its first successful update activates CI.
+          $manifest = Get-Content "bucket/$env:PACKAGE.json" -Raw | ConvertFrom-Json
+          $placeholderSha = "0" * 64
+          $hashes = @($manifest.hash)
+          if ($manifest.architecture) {
+            foreach ($prop in $manifest.architecture.PSObject.Properties) {
+              $hashes += $prop.Value.hash
+            }
+          }
+          if ($hashes -contains $placeholderSha) {
             echo "skip=true" >> $env:GITHUB_OUTPUT
-            echo "::notice::${{ matrix.package }} is still 0.0.0 (placeholder); skipping install test"
+            echo "::notice::$env:PACKAGE has placeholder hash; skipping install test"
           } else {
             echo "skip=false" >> $env:GITHUB_OUTPUT
           }
-      # keycast requires Python >= 3.14; the pipx-shim manifest installs through it.
       - name: Set up Python
         if: steps.guard.outputs.skip == 'false'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
@@ -106,40 +183,48 @@ jobs:
         run: |
           # Scoop wants a Git URL for `bucket add`; for local testing we copy the
           # working-tree files straight into Scoop's bucket directory instead.
-          $bucketDir = "$env:USERPROFILE\scoop\buckets\keycast"
+          $bucketDir = "$env:USERPROFILE\scoop\buckets\template-test"
           New-Item -ItemType Directory -Path "$bucketDir\bucket" -Force
           Copy-Item -Path "${{ github.workspace }}\bucket\*" -Destination "$bucketDir\bucket\" -Recurse
       - name: Install ${{ matrix.package }}
         if: steps.guard.outputs.skip == 'false'
         shell: pwsh
+        env:
+          PACKAGE: ${{ matrix.package }}
         run: |
           $env:Path = "$env:USERPROFILE\scoop\shims;$env:Path"
-          scoop install keycast/${{ matrix.package }}
+          scoop install "template-test/$env:PACKAGE"
       - name: Smoke-test the installed command
         if: steps.guard.outputs.skip == 'false'
         shell: pwsh
+        env:
+          PACKAGE: ${{ matrix.package }}
         run: |
-          # Each package exposes its CLI via a different bin dir: the binary via
-          # Scoop's shims, keycast-pipx via pipx's bin dir (~/.local/bin), and the
-          # uv-tool shims via uv's tool bin dir. Scoop's `uv` package points that
+          # Packages expose CLIs from Scoop, pipx (~/.local/bin), or uv. Scoop's
+          # `uv` package points its tool bin directory
           # at scoop\persist\uv\tools\shims (and adds it to the persistent PATH),
           # so prepend all three explicitly — the persistent PATH change from
           # install doesn't affect this already-started job session. The smoke-test
-          # invocation differs per tool — mirroring each Homebrew formula's
-          # `test do` block — so look it up by package name (default:
-          # `<package> version`).
-          $env:Path = "$env:USERPROFILE\scoop\shims;$env:USERPROFILE\scoop\persist\uv\tools\shims;$env:USERPROFILE\.local\bin;$env:Path"
+          # invocation can be overridden by package name below. By default a
+          # `-pipx` suffix is removed and `<command> version` is run.
+          $toolPaths = @(
+            "$env:USERPROFILE\scoop\shims"
+            "$env:USERPROFILE\scoop\persist\uv\tools\shims"
+            "$env:USERPROFILE\.local\bin"
+            $env:Path
+          )
+          $env:Path = $toolPaths -join ";"
+          # Add package-specific commands here when `version` is not supported.
           $smoke = @{
-            "keycast"      = "keycast version"
-            "keycast-pipx" = "keycast version"
-            "cobo"         = "cobo version"
-            "hwid"         = "hwid"
-            "olink"        = "olink --version"
-            "ocom"         = "ocom version"
-            "nur"          = "nur --version"
-            "peta"         = "peta --version"
+            "hwid"  = "hwid"
+            "olink" = "olink --version"
+            "nur"   = "nur --version"
+            "peta"  = "peta --version"
           }
-          $cmd = $smoke["${{ matrix.package }}"]
-          if (-not $cmd) { $cmd = "${{ matrix.package }} version" }
+          $cmd = $smoke[$env:PACKAGE]
+          if (-not $cmd) {
+            $command = $env:PACKAGE -replace '-pipx$', ''
+            $cmd = "$command version"
+          }
           Write-Host "Smoke test: $cmd"
           Invoke-Expression $cmd

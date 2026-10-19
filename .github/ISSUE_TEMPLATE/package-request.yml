@@ -1,0 +1,36 @@
+---
+name: Package request
+description: Suggest a package to add to this bucket.
+labels: [enhancement]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Package name
+      placeholder: example
+    validations:
+      required: true
+  - type: input
+    id: homepage
+    attributes:
+      label: Homepage or repository URL
+      placeholder: https://github.com/owner/repo
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What does it do?
+      description: One or two sentences.
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Binary (GitHub release)
+        - Shim (pipx/uv, PyPI package)
+        - Both
+    validations:
+      required: true

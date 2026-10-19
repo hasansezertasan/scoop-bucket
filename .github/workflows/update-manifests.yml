@@ -2,6 +2,8 @@
 name: Update Manifests
 # The source of truth and safety net: re-checks every manifest on a schedule, so
 # the bucket stays current even if a package repo never fires its dispatch.
+# Deny-by-default; each job opts back into exactly what it needs.
+permissions: {}
 on:
   schedule:
     # Run weekly on Mondays at 09:00 UTC
@@ -12,6 +14,11 @@ on:
         description: "Specific package family to update (leave empty for all)"
         required: false
         type: string
+      dry_run:
+        description: "Dry run (check only, no PR)"
+        required: false
+        type: boolean
+        default: false
 jobs:
   update:
     name: Update manifests
@@ -22,6 +29,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -36,19 +45,22 @@ jobs:
         run: |
           # PACKAGE is empty for "update all"; pass it as an argument only when
           # set (an empty "" arg would be read as a family filter matching nothing).
+          update_status=0
           {
             echo 'summary<<SUMMARY_EOF'
             if [ -n "$PACKAGE" ]; then
-              python scripts/update_manifests.py "$PACKAGE"
+              python scripts/update_manifests.py "$PACKAGE" || update_status=$?
             else
-              python scripts/update_manifests.py
+              python scripts/update_manifests.py || update_status=$?
             fi
             echo 'SUMMARY_EOF'
           } >> "$GITHUB_OUTPUT"
+          echo "has_failures=$([ "$update_status" -ne 0 ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
+        if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
           commit-message: "chore: update manifests"
           title: "chore: update manifests"
           body: |
@@ -62,3 +74,8 @@ jobs:
           branch: auto-update/scheduled
           delete-branch: true
           labels: automated,dependencies
+      - name: Check update status
+        if: steps.update.outputs.has_failures == 'true'
+        run: |
+          echo "::error::One or more manifests failed to update. Check the update step logs for details."
+          exit 1

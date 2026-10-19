@@ -1,0 +1,33 @@
+---
+name: Broken package
+description: Report a manifest that fails to install or run.
+labels: [bug]
+body:
+  - type: input
+    id: package
+    attributes:
+      label: Package name
+      placeholder: example
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: 1.2.3
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: Paste the failing command and relevant output (install or runtime).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, Scoop version (`scoop --version`), and any relevant details.
+      render: text

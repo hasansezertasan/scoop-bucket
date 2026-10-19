@@ -30,7 +30,7 @@ namespace, so every installable is its own name. Three install routes are used:
 | Package | What it does | Route | Needs Python? | Source |
 |---|---|---|---|---|
 | `keycast` | Cross-platform keystroke and mouse-click visualizer built in Python ([repo](https://github.com/hasansezertasan/keycast)) | binary | No | GitHub Releases |
-| `keycast-pipx` | Cross-platform keystroke and mouse-click visualizer built in Python ([repo](https://github.com/hasansezertasan/keycast) · [PyPI](https://pypi.org/project/keycast/)) | pipx shim | Yes (3.14+) | PyPI |
+| `keycast-pipx` | Cross-platform keystroke and mouse-click visualizer built in Python ([repo](https://github.com/hasansezertasan/keycast) · [PyPI](https://pypi.org/project/keycast/)) | pipx shim | Yes | PyPI |
 | `cobo` | Generic CLI for fetching boilerplate files from configurable git repositories ([repo](https://github.com/hasansezertasan/cobo) · [PyPI](https://pypi.org/project/cobo/)) | uv-tool shim | No¹ | PyPI |
 | `hwid` | Cross-platform hardware ID extraction using native OS detection ([repo](https://github.com/hasansezertasan/hwid) · [PyPI](https://pypi.org/project/hwid/)) | uv-tool shim | No¹ | PyPI |
 | `nur` | Script discovery and execution engine for your project's tasks ([repo](https://github.com/hasansezertasan/nur) · [PyPI](https://pypi.org/project/nur/)) | uv-tool shim | No¹ | PyPI |
