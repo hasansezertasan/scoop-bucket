@@ -6,10 +6,10 @@ its own fields (``checkver``/``depends``/``installer``), then rewrites the table
 between the ``BEGIN/END PACKAGES TABLE`` markers in README.md. Everything shown
 is derived from the manifest, so the table can never drift from what ships.
 
-Three routes, mirroring the tap's cask/formula split:
+Three install routes are recognized:
 
 - **binary** — a GitHub-Releases ``.zip`` shimmed as an ``.exe`` (``checkver.github``,
-  a ``bin``); no Python required. The *cask* analogue.
+  a ``bin``); no Python required.
 - **pipx shim** — ``"depends": "pipx"``; ``pipx install`` from PyPI, needs Python.
 - **uv-tool shim** — ``"depends": "uv"``; ``uv tool install`` from PyPI. uv fetches
   its own Python, so nothing else is needed (the ``No`` carries a ``¹`` footnote
@@ -37,13 +37,13 @@ END = "<!-- END PACKAGES TABLE -->"
 
 # Trailing route hint appended to a manifest's description, stripped for display.
 _SUFFIX = re.compile(r"\s*\((?:uv tool install|pipx install)\)\s*$")
-# Package name installed by a shim, e.g. "keycast" from "pipx install keycast==1.0".
+# Package name installed by a shim, e.g. "widget" from "pipx install widget==1.0".
 _PKG = re.compile(r"(?:uv tool install|pipx install)\s+([A-Za-z0-9._-]+)")
 
 # route key -> (label, source, needs-Python) columns.
 _ROUTE = {
     "binary": ("binary", "GitHub Releases", "No"),
-    "pipx": ("pipx shim", "PyPI", "Yes (3.14+)"),
+    "pipx": ("pipx shim", "PyPI", "Yes"),
     "uv": ("uv-tool shim", "PyPI", "No¹"),
 }
 # Stable display order: binary, then pipx, then uv; alphabetical within a route.
@@ -63,15 +63,15 @@ def cell(value: str) -> str:
 def route(manifest: dict) -> str:
     """Classify a manifest into ``binary``/``pipx``/``uv`` from its fields."""
     depends = manifest.get("depends")
-    if depends == "pipx":
+    if depends == "pipx" or (isinstance(depends, list) and "pipx" in depends):
         return "pipx"
-    if depends == "uv":
+    if depends == "uv" or (isinstance(depends, list) and "uv" in depends):
         return "uv"
     return "binary"
 
 
 def pypi_name(manifest: dict, stem: str) -> str:
-    """PyPI package a shim installs (``keycast`` for ``keycast-pipx``), or the stem."""
+    """PyPI package a shim installs (``widget`` for ``widget-pipx``), or the stem."""
     script = (manifest.get("installer") or {}).get("script", "")
     match = _PKG.search(script)
     return match.group(1) if match else stem
@@ -94,7 +94,10 @@ def build_table() -> str:
             "|---|---|---|---|---|"]
     manifests = []
     for path in BUCKET.glob("*.json"):
-        manifest = json.loads(path.read_text())
+        try:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            sys.exit(f"error: invalid JSON in {path.name}: {exc}")
         manifests.append((path.stem, manifest, route(manifest)))
     manifests.sort(key=lambda item: (_ORDER[item[2]], item[0]))
 
@@ -123,18 +126,18 @@ def main() -> None:
                         help="exit non-zero if README.md is out of date")
     args = parser.parse_args()
 
-    current = README.read_text()
+    current = README.read_text(encoding="utf-8")
     updated = splice(current, build_table())
 
     if args.check:
         if current != updated:
             sys.exit("README.md packages table is stale; run "
-                     "`python scripts/gen_readme_packages.py`")
-        print("README.md packages table is up to date")
+                     "`mise run generate-readme`")
+        print("README.md packages table is up to date", file=sys.stderr)
         return
 
     if current != updated:
-        README.write_text(updated)
+        README.write_text(updated, encoding="utf-8")
         print("Updated README.md packages table")
     else:
         print("README.md packages table already up to date")

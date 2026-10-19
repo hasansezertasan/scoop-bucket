@@ -1,16 +1,50 @@
 [tools]
-action-validator = "latest"
-actionlint = "latest"
-# Provides `python` for the scaffolder task below. `python3` isn't reliable on
+"pipx:cobo" = "0.6.0"
+action-validator = "0.9.0"
+actionlint = "1.7.12"
+# Provides `python` for the tasks below. `python3` isn't reliable on
 # Windows (the stock CPython installer ships `python.exe`, and `python3` often
 # resolves to the Microsoft Store alias stub), and this bucket targets Windows.
-python = "3.14"
-yamlfmt = "latest"
-yamllint = "latest"
+python = "3.15.0"
+uv = "0.13.1"
+yamlfmt = "0.21.0"
+yamllint = "1.38.0"
+zizmor = "1.31.1"
 
-[tasks."add-manifest"]
-description = "Scaffold a manifest: `add-manifest binary <repo>` or `add-manifest shim <package>`"
-run = "python scripts/add_manifest.py"
+[tasks."check-boilerplate"]
+description = "Verify Cobo-managed files match cobo.lock"
+# --strict also compares the whole file, so the rendered .gitignore must be
+# byte-identical to the template's .gitignore.jinja.
+run = "cobo check --strict"
+
+[tasks."check-readme"]
+description = "Verify the generated package catalog is current"
+run = "python scripts/gen_readme_packages.py --check"
+
+[tasks."generate-readme"]
+description = "Regenerate the package catalog"
+run = "python scripts/gen_readme_packages.py"
+
+[tasks."test"]
+description = "Run the unit test suite"
+run = "python -m unittest discover -s tests -v"
+
+[tasks."check"]
+description = "Run all local verification"
+run = [
+  { task = "test" },
+  { task = "check-readme" },
+  { task = "style:check" },
+  { task = "check-boilerplate" },
+]
+
+[tasks."hooks"]
+description = "Install the prek git hooks"
+run = "uvx prek install"
+
+[tasks."lint"]
+description = "Run every prek hook across the whole repository"
+run = "uvx prek run --all-files"
 
 [tasks."style"]
 description = "Format and lint all YAML files"
@@ -22,7 +56,8 @@ run = "yamlfmt -conf .config/.yamlfmt.yml ."
 
 [tasks."style:check"]
 description = "Lint YAML and GitHub Actions files (no fixes)"
-run = """
+# A TOML *literal* multi-line string: the find below needs real backslashes.
+run = '''
 #!/usr/bin/env bash
 set -e
 echo "Running yamllint..."
@@ -30,6 +65,12 @@ yamllint -c .config/.yamllint.yaml .
 echo "Running actionlint..."
 actionlint
 echo "Running action-validator..."
-find .github/workflows -name '*.yml' -exec action-validator {} +
+# GitHub accepts both extensions for workflows; neither may bypass validation.
+find .github/workflows \( -name '*.yml' -o -name '*.yaml' \) -exec action-validator {} +
+echo "Running zizmor..."
+zizmor --persona=regular .github/workflows
 echo "All checks passed!"
+'''
+run_windows = """
+powershell -NoProfile -Command "& { $ErrorActionPreference = 'Stop'; Write-Host 'Running yamllint...'; yamllint -c .config/.yamllint.yaml .; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Write-Host 'Running actionlint...'; actionlint; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Write-Host 'Running action-validator...'; Get-ChildItem -Path .github/workflows | Where-Object { $_.Extension -eq '.yml' -or $_.Extension -eq '.yaml' } | ForEach-Object { action-validator $_.FullName; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }; Write-Host 'Running zizmor...'; zizmor --persona=regular .github/workflows/; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Write-Host 'All checks passed!' }"
 """

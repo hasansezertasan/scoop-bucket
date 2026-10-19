@@ -1,0 +1,45 @@
+---
+name: Boilerplate Drift
+# Re-renders the Cobo-managed `.gitignore` from the upstream github/gitignore
+# templates recorded in cobo.lock and opens a pull request when they drifted.
+# Fetching the upstream templates hits the network and is inherently flaky, so
+# this runs weekly and on demand — never on pull_request. A failed run is a
+# maintenance signal, not a merge blocker; the next run retries. A pull request
+# opened with the GITHUB_TOKEN fallback does not start every check: its
+# pull_request checks wait for approval and the pull_request_target gates
+# (check-branch-name.yml, check-pr-title.yml) do not run at all; close and
+# reopen the pull request to run every applicable check (path-filtered
+# workflows such as tests.yml only run when their own paths changed).
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 07:00 UTC (ahead of update-manifests at 09:00).
+    - cron: "0 7 * * 1"
+permissions: {}
+jobs:
+  sync:
+    name: Open PR for boilerplate drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The only job that writes: it pushes the update branch and opens the PR.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Sync Cobo fragments and open a PR
+        # The action runs the Cobo release that ships at its own ref, so Renovate
+        # bumps it as an ordinary action digest.
+        uses: hasansezertasan/cobo@1acfd57dbd67a6de4508a0924504cb5d5d5c15e0  # v0.6.0
+        with:
+          pr-title: "chore: sync Cobo-managed boilerplate"
+          # The action's default, cobo/update-fragments, fails check-branch-name.yml.
+          branch: chore/sync-cobo-boilerplate
+          # Fail the run when a fragment cannot be re-rendered. Otherwise an
+          # unreachable or moved template leaves no diff, no PR, and a green run.
+          fail-on-sync-error: "true"
+          # Optional PAT or App token so the pull request's checks start by
+          # themselves; GITHUB_TOKEN is the fallback.
+          token: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
