@@ -60,8 +60,11 @@ namespace, so each is a distinct installable name):
   `python scripts/gen_readme_packages.py` (stdlib only). Manifest-derived cells
   are pipe-escaped and newline-collapsed. The prose notes below the table stay
   hand-written, outside the markers.
-- `.claude/skills/scoop-add/SKILL.md` — the routing skill for "add a manifest",
-  mirroring the tap's `homebrew-add`.
+- Skills for working on this bucket (`scoop-add`, `scoop-verify`,
+  `scoop-fix-manifest`, `scoop-update-triage`, `scoop-remove-or-deprecate`) come
+  from the [`scoop-bucket-skills`](https://github.com/hasansezertasan/scoop-bucket-skills)
+  plugin, enabled for this project in `.claude/settings.json`. There are no
+  repo-local skills.
 - `scripts/noop.ps1` — placeholder for the pipx manifest. Its sha256 is
   `fdcbbea851292d9aa67f598bc6f1ab96e58873385972cd3d209ccab239cbad87`; reuse it for
   any future pipx-based manifest.
@@ -79,12 +82,23 @@ namespace, so each is a distinct installable name):
 
 - **lint** — validates each manifest's JSON syntax.
 - **unit** — runs the `scripts/` unit tests (`python -m unittest discover -s tests`;
-  covers `update_manifests.py` and `add_manifest.py`).
+  covers the scripts under `scripts/`).
+- **boilerplate** — `cobo check --strict` verifies the Cobo-managed files against
+  `cobo.lock`.
 - **discover** / **test** — for any manifest past its `0.0.0` placeholder,
-  installs it on a Windows runner (with Python 3.14 for the pipx route) and
-  smoke-tests the installed command via a per-package map (`keycast version`,
-  `cobo version`, `ocom --version`, …). Manifests still at `0.0.0` are skipped, so CI is
-  green on a freshly seeded bucket and activates automatically on the first bump.
+  installs it on a Windows runner (with Python 3.15 for the pipx route) and
+  smoke-tests the installed command. The default is `<command> version`; the
+  `$smoke` map in `tests.yml` overrides it (`hwid`, `olink --version`,
+  `nur --version`, `peta --version`). Manifests still at `0.0.0` are skipped, so CI
+  is green on a freshly seeded bucket and activates automatically on the first bump.
+
+Other workflows: `readme.yml` (catalog freshness), `zizmor.yml` (workflow audit),
+`check-pr-title.yml` and `check-branch-name.yml` (Conventional Commit titles and
+branch names) and `gitignore-drift.yml` (weekly Cobo `.gitignore` sync PR). The
+template's workflows, scripts and tests come from
+[`copier-scoop-bucket`](https://github.com/hasansezertasan/copier-scoop-bucket);
+the version is in `.copier-answers.yml`, and `scripts/noop.ps1` is kept as is
+because every shim manifest hard-codes its hash.
 
 ## Version updates
 

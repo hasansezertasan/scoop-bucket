@@ -75,30 +75,58 @@ All manifests are kept current automatically — there is nothing to edit by han
   release pipeline fires a `repository_dispatch` (`update-manifest`) right after
   publishing, so the bump lands promptly instead of waiting for the cron.
 
-PRs are opened with `peter-evans/create-pull-request` using the bucket's own
-`GITHUB_TOKEN`. The seeded manifests start at `0.0.0`; the first update fills in
-the real version, URL, and hash. The binary `keycast` manifest only bumps once a
-keycast release ships `keycast-windows.zip` (the updater skips it with a warning
-until then).
+PRs are opened with `peter-evans/create-pull-request` using the repository secret
+`WORKFLOW_TOKEN` when set, otherwise the built-in `GITHUB_TOKEN` (whose PRs may
+need their checks approved or run by hand). The binary `keycast` manifest only
+bumps once a keycast release ships `keycast-windows.zip` (the updater skips it
+with a warning until then).
 
 ## Development
 
 ```powershell
+mise install                         # install the pinned tools
+mise run check                       # tests, catalog freshness, YAML style, boilerplate
+mise run generate-readme             # regenerate the packages table
 mise run style                       # format + lint YAML and workflows
-mise run add-manifest shim <pypi>    # scaffold a uv-tool shim from a PyPI package
-mise run add-manifest binary <repo>  # scaffold a binary manifest from a GitHub release
-python -m unittest discover -s tests # run the updater/scaffolder unit tests
+python -m unittest discover -s tests # run the unit tests
 ```
 
 Tests (`.github/workflows/tests.yml`) validate every manifest's JSON, run the
-Python unit tests, and — for any manifest past its `0.0.0` placeholder — install
-it on a Windows runner and smoke-test the installed command (e.g. `keycast
-version`, `ocom version`).
+Python unit tests, check the Cobo-managed files, and — for any manifest past its
+`0.0.0` placeholder — install it on a Windows runner and smoke-test the installed
+command (`<command> version` unless the `$smoke` map in `tests.yml` says
+otherwise).
 
-`scripts/add_manifest.py` scaffolds a new manifest (a binary download or a
-uv/pipx shim), mirroring the tap's `add_cask.py` / `add_formula.py`. See
-[`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for manifest templates, the scaffolder, and
-local testing, and [`AGENTS.md`](AGENTS.md) for the architecture notes.
+### Adding a manifest
+
+Use the `scoop-add` skill from
+[`scoop-bucket-skills`](https://github.com/hasansezertasan/scoop-bucket-skills),
+or call the scaffolder directly. Route by what the package ships on Windows:
+
+```powershell
+mise run add-manifest shim cobo                 # uv-tool shim (bare tool name)
+mise run add-manifest shim keycast --via pipx   # pipx shim, named <package>-pipx
+$env:GITHUB_TOKEN = gh auth token
+mise run add-manifest binary hasansezertasan/keycast   # reads the latest release, hashes the .zip
+mise run add-manifest binary hasansezertasan/keycast --seed --bin keycast.exe   # placeholder before a release
+```
+
+Review what it can't infer: the description (the updater never rewrites it), the
+archive's `bin` and `extract_dir` when there is more than one `.exe`, and the
+smoke-test command. Then run `mise run generate-readme` and `mise run check`.
+The existing files in `bucket/` are the reference shape for each route, and the
+sha256 of `scripts/noop.ps1` is in [`AGENTS.md`](AGENTS.md).
+
+### Testing locally (Windows)
+
+```powershell
+scoop bucket add hasansezertasan C:\path\to\this\repo
+scoop install keycast        # or keycast-pipx; install one, both provide `keycast`
+keycast version
+```
+
+See [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for the pull request checklist
+and [`AGENTS.md`](AGENTS.md) for the architecture notes.
 
 ## License
 
