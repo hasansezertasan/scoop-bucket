@@ -119,11 +119,19 @@ sha256 of `scripts/noop.ps1` is in [`AGENTS.md`](AGENTS.md).
 
 ### Testing locally (Windows)
 
+`scoop bucket add` needs a Git URL, so copy the working tree's manifests into
+Scoop's bucket directory instead (the same way CI does):
+
 ```powershell
-scoop bucket add hasansezertasan C:\path\to\this\repo
-scoop install keycast        # or keycast-pipx; install one, both provide `keycast`
+$bucketDir = "$env:USERPROFILE\scoop\buckets\local-test"
+New-Item -ItemType Directory -Path "$bucketDir\bucket" -Force
+Copy-Item -Path C:\path\to\this\repo\bucket\* -Destination "$bucketDir\bucket\" -Recurse
+scoop install local-test/keycast   # or local-test/keycast-pipx; both provide `keycast`
 keycast version
 ```
+
+Remove it afterwards with `scoop uninstall keycast` and by deleting the
+`local-test` directory.
 
 See [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for the pull request checklist
 and [`AGENTS.md`](AGENTS.md) for the architecture notes.
