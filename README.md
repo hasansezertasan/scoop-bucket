@@ -130,8 +130,8 @@ scoop install local-test/keycast   # or local-test/keycast-pipx; both provide `k
 keycast version
 ```
 
-Remove it afterwards with `scoop uninstall keycast` and by deleting the
-`local-test` directory.
+Remove it afterwards with `scoop uninstall <package>` (the one you installed,
+`keycast` or `keycast-pipx`) and by deleting the `local-test` directory.
 
 See [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) for the pull request checklist
 and [`AGENTS.md`](AGENTS.md) for the architecture notes.
