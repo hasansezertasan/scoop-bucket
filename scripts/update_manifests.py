@@ -10,7 +10,9 @@ supported:
 - **GitHub-release manifest** (``checkver.github``) is a binary download:
   ``version``, each per-arch ``url`` (rebuilt from the
   ``autoupdate`` template), and the ``hash`` (sha256 of the freshly downloaded
-  asset) all change.
+  asset) all change. The version is the latest release tag with a leading
+  ``v``/``V`` stripped, or the first capture group of ``checkver.regex`` when
+  set (see ``_version_from_tag``).
 
 Run with no args to check every manifest; pass a package name to limit the run
 to that family — ``example`` matches both ``example`` and ``example-pipx`` (the
@@ -52,6 +54,62 @@ def _latest_pypi(checkver: dict) -> str:
     return _get_json(checkver["url"])["info"]["version"]
 
 
+def _group(match: re.Match[str], ref: str) -> str:
+    """Return a capture by number or name; an unmatched optional group is empty."""
+    return match.group(int(ref) if ref.isdigit() else ref) or ""
+
+
+def _expand_replace(match: re.Match[str], replace: str) -> str:
+    """Expand a .NET-style replacement (``$1``, ``${1}``, ``${name}``, ``$$``) against ``match``."""
+
+    def group(m: re.Match[str]) -> str:
+        return "$" if m.group("dollar") else _group(match, m.group("num") or m.group("name"))
+
+    return re.sub(r"\$(?:(?P<dollar>\$)|(?P<num>\d+)|\{(?P<name>\w+)\})", group, replace)
+
+
+def _version_from_tag(repo: str, tag: str, checkver: dict) -> str:
+    """Derive the version from a release tag with ``checkver.regex`` (and ``replace``).
+
+    Follows Scoop's ``checkver.ps1`` where it can: the regex is case-sensitive (a
+    plain .NET ``Regex``), accepts .NET-style ``(?<name>...)`` groups, and the
+    version is group 1, then ``checkver.replace`` (``$1``, ``${name}``) applied
+    to the matched text (as ``Regex.Replace`` does) if set, then the group named ``version`` if that is still empty.
+    Only the subset of .NET regex that Python reads the same way is supported:
+    a regex mixing named and unnamed groups is rejected (.NET numbers the
+    unnamed ones first, Python by position), as are .NET-only constructs such as
+    ``\\k<name>``, ``(?'name'...)`` and balancing groups. Scoop runs the regex
+    against the releases page, but this matches the bare tag, so a regex
+    anchored on ``/releases/tag/`` will not match.
+    """
+    regex, replace = checkver["regex"], checkver.get("replace")
+    context = f"checkver.regex {regex!r} for {repo} (tag {tag!r})"
+    if not isinstance(regex, str) or not regex:
+        raise ValueError(f"{context} must be a non-empty string")
+    if replace is not None and (not isinstance(replace, str) or not replace):
+        raise ValueError(f"checkver.replace {replace!r} for {repo} must be a non-empty string")
+    try:
+        pattern = re.compile(re.sub(r"\(\?<(?![=!])", "(?P<", regex))
+    except re.error as exc:
+        raise ValueError(f"invalid or unsupported {context}: {exc}") from exc
+    if pattern.groupindex and pattern.groups > len(pattern.groupindex):
+        raise ValueError(f"unsupported {context}: mixes named and unnamed groups")
+    match = pattern.search(tag)
+    if not match:
+        raise ValueError(f"{context} does not match the tag")
+    version = _group(match, "1") if match.re.groups else ""
+    if replace is not None:
+        try:
+            version = pattern.sub(lambda m: _expand_replace(m, replace), match.group(0))
+        except (IndexError, re.error) as exc:
+            raise ValueError(f"{context} has no group for checkver.replace {replace!r}") from exc
+    if not version and "version" in match.re.groupindex:
+        version = match.group("version")
+    if not version:
+        raise ValueError(f"{context} yields an empty version")
+    return version
+
+
 def _latest_github(checkver: dict) -> str:
     # checkver.github is the repo homepage; the latest *release* tag is the
     # version (drafts are excluded by the API, which is what we want).
@@ -61,7 +119,9 @@ def _latest_github(checkver: dict) -> str:
         msg = data.get("message", "unknown error")
         raise ValueError(f"GitHub API error for {repo}: {msg}")
     tag = data["tag_name"]
-    return tag[1:] if re.fullmatch(r"v\d.*", tag) else tag
+    if "regex" in checkver:
+        return _version_from_tag(repo, tag, checkver)
+    return tag[1:] if re.fullmatch(r"[vV]\d.*", tag) else tag
 
 
 def _sha256(url: str) -> str:
@@ -226,6 +286,10 @@ def _update_manifest(path: Path) -> str | None:
     # predates the Windows build — skip this manifest with a warning rather than
     # writing a version whose download 404s (and don't fail the whole run).
     autoupdate = data.get("autoupdate", {})
+    # Scoop substitutes regex captures into autoupdate as $match<name>; this
+    # updater only knows $version, so refuse rather than write a literal "$match..." URL.
+    if re.search(r"\$match\w", json.dumps(autoupdate)):
+        raise ValueError(f"{path.name}: autoupdate uses $match variables, which are not supported")
     try:
         manifest_arch = data.get("architecture")
         has_manifest_arch = isinstance(manifest_arch, dict) and bool(manifest_arch)
