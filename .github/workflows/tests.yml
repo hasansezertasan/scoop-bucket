@@ -220,6 +220,7 @@ jobs:
             "olink" = "olink --version"
             "nur"   = "nur --version"
             "peta"  = "peta --version"
+            "mibare" = "mibare --help"
           }
           $cmd = $smoke[$env:PACKAGE]
           if (-not $cmd) {
