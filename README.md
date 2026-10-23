@@ -33,6 +33,7 @@ namespace, so every installable is its own name. Three install routes are used:
 | `keycast-pipx` | Cross-platform keystroke and mouse-click visualizer built in Python ([repo](https://github.com/hasansezertasan/keycast) · [PyPI](https://pypi.org/project/keycast/)) | pipx shim | Yes | PyPI |
 | `cobo` | Generic CLI for fetching boilerplate files from configurable git repositories ([repo](https://github.com/hasansezertasan/cobo) · [PyPI](https://pypi.org/project/cobo/)) | uv-tool shim | No¹ | PyPI |
 | `hwid` | Cross-platform hardware ID extraction using native OS detection ([repo](https://github.com/hasansezertasan/hwid) · [PyPI](https://pypi.org/project/hwid/)) | uv-tool shim | No¹ | PyPI |
+| `mibare` | Mise Backend Resolver: recommends which mise backend to install a GitHub repository with ([repo](https://github.com/hasansezertasan/mibare) · [PyPI](https://pypi.org/project/mibare/)) | uv-tool shim | No¹ | PyPI |
 | `nur` | Script discovery and execution engine for your project's tasks ([repo](https://github.com/hasansezertasan/nur) · [PyPI](https://pypi.org/project/nur/)) | uv-tool shim | No¹ | PyPI |
 | `ocom` | Unified TUI for managing network/privacy tools: OpenVPN, SpoofDPI, WARP ([repo](https://github.com/hasansezertasan/ocom) · [PyPI](https://pypi.org/project/ocom/)) | uv-tool shim | No¹ | PyPI |
 | `olink` | CLI tool that opens external URLs related to your project ([repo](https://github.com/hasansezertasan/olink) · [PyPI](https://pypi.org/project/olink/)) | uv-tool shim | No¹ | PyPI |
